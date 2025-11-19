@@ -11,6 +11,7 @@ The tree visualization uses drag-and-drop nodes, so you can arrange things howev
 ## Tech Stack
 
 **Frontend:**
+
 - Next.js 16 (App Router)
 - React 19
 - TypeScript
@@ -19,11 +20,13 @@ The tree visualization uses drag-and-drop nodes, so you can arrange things howev
 - TanStack Query (data fetching)
 
 **Backend:**
+
 - NextAuth.js v5 (authentication)
 - AWS DynamoDB (single-table design)
 - AWS S3 (photo storage - planned)
 
 **Development:**
+
 - Docker (runs DynamoDB locally, no AWS needed)
 - DynamoDB Admin UI (visual database inspector)
 
@@ -63,6 +66,7 @@ Open [http://localhost:3000](http://localhost:3000) and you're good to go.
 ### Demo Account
 
 Try it out with:
+
 - Email: `demo@yggdrasil.local`
 - Password: `demo123`
 
@@ -94,6 +98,7 @@ yggdrasil/
 ## Available Scripts
 
 **Docker:**
+
 ```bash
 npm run docker:up        # Start containers
 npm run docker:down      # Stop containers
@@ -101,6 +106,7 @@ npm run docker:logs      # View container logs
 ```
 
 **Database:**
+
 ```bash
 npm run db:setup         # Create DynamoDB tables
 npm run db:seed          # Load sample data
@@ -108,6 +114,7 @@ npm run db:backup        # Backup local data to JSON
 ```
 
 **Development:**
+
 ```bash
 npm run dev              # Start dev server
 npm run build            # Build for production
@@ -175,6 +182,7 @@ AWS_SECRET_ACCESS_KEY=your-secret
 ## Features
 
 **Current:**
+
 - ✅ User authentication (sign up, sign in, sign out)
 - ✅ Create multiple family trees
 - ✅ Add people with detailed info (dates, places, occupation, bio)
@@ -184,6 +192,7 @@ AWS_SECRET_ACCESS_KEY=your-secret
 - ✅ Responsive design
 
 **Planned:**
+
 - 📷 Photo uploads for people
 - 🔍 Advanced search and filtering
 - 📊 Statistics and insights
