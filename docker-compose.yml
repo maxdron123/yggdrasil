@@ -1,0 +1,73 @@
+# Docker Compose Configuration for Yggdrasil Local Development
+# This file defines the services needed to run the application locally without AWS
+
+services:
+  # DynamoDB Local - Amazon DynamoDB running on your local machine
+  # This allows us to develop and test without connecting to AWS
+  # and without incurring any costs during development
+  dynamodb-local:
+    # Official Amazon DynamoDB Local Docker image
+    image: amazon/dynamodb-local:latest
+
+    container_name: yggdrasil-dynamodb
+
+    # Expose DynamoDB on port 8000 (standard DynamoDB Local port)
+    # You'll connect to it at http://localhost:8000
+    ports:
+      - "8000:8000"
+
+    # Command flags explained:
+    # -jar DynamoDBLocal.jar - Run the DynamoDB Local JAR file
+    # -sharedDb - Use a shared database file (all clients see same data)
+    # -dbPath /data - Store database files in /data directory
+    # -inMemory (optional) - Keep data in memory only, no persistence
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /data"
+
+    # Volume mount - persist data between container restarts
+    # Maps ./docker/dynamodb-data on your machine to /data in container
+    # Without this, all data would be lost when container stops
+    volumes:
+      - ./docker/dynamodb-data:/data
+
+    # Always restart on failure (useful for development)
+    restart: unless-stopped
+
+  # DynamoDB Admin - Web UI for viewing/managing DynamoDB tables
+  # This is optional but very helpful for debugging
+  # Access it at http://localhost:8001
+  dynamodb-admin:
+    # Community-built admin interface for DynamoDB Local
+    image: aaronshaf/dynamodb-admin:latest
+
+    container_name: yggdrasil-dynamodb-admin
+
+    # Expose admin UI on port 8001
+    ports:
+      - "8001:8001"
+
+    # Environment variable tells admin where to find DynamoDB
+    # dynamodb-local:8000 uses Docker's internal networking
+    # Docker Compose creates a network where services can reach each other by name
+    environment:
+      - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-east-1
+      # Fake credentials required by DynamoDB Local (it doesn't validate them)
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+
+    # Wait for DynamoDB to start before starting admin UI
+    depends_on:
+      - dynamodb-local
+
+    restart: unless-stopped
+
+# Docker will create a custom network for these services
+# Services can communicate using their service names as hostnames
+networks:
+  default:
+    name: yggdrasil-network
+
+# Define named volumes for persistent storage
+volumes:
+  dynamodb-data:
+    driver: local
