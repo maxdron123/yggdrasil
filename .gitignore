@@ -48,6 +48,10 @@ docker-compose.override.yml
 # local development backups
 backups/
 
+# session context (local notes)
+SESSION-CONTEXT.md
+SESSION-CONTEXT-old.md
+
 # AWS credentials (never commit these!)
 *.pem
 *.ppk

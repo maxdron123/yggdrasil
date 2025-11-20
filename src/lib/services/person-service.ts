@@ -147,11 +147,9 @@ export async function getTreePersons(
       new QueryCommand({
         TableName: TABLE_NAME,
         IndexName: "GSI2",
-        KeyConditionExpression:
-          "GSI2PK = :treePK AND begins_with(GSI2SK, :personPrefix)",
+        KeyConditionExpression: "GSI2PK = :treeId",
         ExpressionAttributeValues: {
-          ":treePK": `TREE#${treeId}`,
-          ":personPrefix": "PERSON#",
+          ":treeId": treeId,
         },
       })
     );

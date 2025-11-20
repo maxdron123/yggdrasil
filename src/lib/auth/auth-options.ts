@@ -82,40 +82,37 @@ export const authOptions: NextAuthConfig = {
         }
 
         try {
-          // Look up user by email
-          // Note: In production, you'd want a GSI on email for efficient lookup
-          // For demo, we're using the seed user with known ID
-          const userId = "seed-user-001"; // Demo user ID
+          // Look up user by email using GSI1
+          const { QueryCommand } = await import("@aws-sdk/client-dynamodb");
 
           const result = await dynamoDBClient.send(
-            new GetItemCommand({
+            new QueryCommand({
               TableName: dynamoDBConfig.tableName,
-              Key: {
-                PK: { S: `USER#${userId}` },
-                SK: { S: "PROFILE" },
+              IndexName: "GSI1",
+              KeyConditionExpression: "GSI1PK = :email",
+              ExpressionAttributeValues: {
+                ":email": { S: credentials.email.toLowerCase() },
               },
+              Limit: 1,
             })
           );
 
-          if (!result.Item) {
+          if (!result.Items || result.Items.length === 0) {
             console.log("User not found:", credentials.email);
             return null;
           }
 
-          const user = unmarshall(result.Item) as User & {
-            PasswordHash: string;
+          const user = unmarshall(result.Items[0]) as {
+            userId: string;
+            email: string;
+            name?: string;
+            passwordHash: string;
           };
-
-          // Verify email matches (case-insensitive)
-          if (user.Email.toLowerCase() !== credentials.email.toLowerCase()) {
-            console.log("Email mismatch");
-            return null;
-          }
 
           // Verify password
           const passwordMatch = await bcrypt.compare(
             credentials.password,
-            user.PasswordHash
+            user.passwordHash
           );
 
           if (!passwordMatch) {
@@ -125,9 +122,9 @@ export const authOptions: NextAuthConfig = {
 
           // Return user data (exclude password hash)
           return {
-            id: user.UserId,
-            email: user.Email,
-            name: user.DisplayName || user.Email,
+            id: user.userId,
+            email: user.email,
+            name: user.name || user.email,
             image: null, // Add profile photo URL if available
           };
         } catch (error) {

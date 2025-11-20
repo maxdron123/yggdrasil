@@ -46,7 +46,7 @@ export default function DashboardPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
+              <Card key="stat-trees">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -76,7 +76,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card key="stat-persons">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -106,7 +106,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card key="stat-public">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Link href="/trees">
+                  <Link href="/trees" key="new-tree">
                     <button className="w-full p-4 text-left border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
@@ -236,7 +236,10 @@ export default function DashboardPage() {
                     </button>
                   </Link>
 
-                  <button className="w-full p-4 text-left border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
+                  <button
+                    key="add-person"
+                    className="w-full p-4 text-left border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-green-100 rounded-lg">
                         <svg
@@ -262,7 +265,10 @@ export default function DashboardPage() {
                     </div>
                   </button>
 
-                  <button className="w-full p-4 text-left border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+                  <button
+                    key="import-data"
+                    className="w-full p-4 text-left border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-purple-100 rounded-lg">
                         <svg

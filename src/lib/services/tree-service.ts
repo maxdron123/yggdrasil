@@ -86,14 +86,15 @@ export async function getTree(
   userId?: string
 ): Promise<Tree | null> {
   try {
-    // Query using GSI2 (TreeId index)
+    // Query using GSI1 (Tree metadata index)
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        IndexName: "GSI2",
-        KeyConditionExpression: "GSI2PK = :treePK",
+        IndexName: "GSI1",
+        KeyConditionExpression: "GSI1PK = :treePK AND GSI1SK = :metadata",
         ExpressionAttributeValues: {
           ":treePK": `TREE#${treeId}`,
+          ":metadata": "METADATA",
         },
         Limit: 1,
       })

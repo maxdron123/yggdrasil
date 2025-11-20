@@ -1,811 +1,527 @@
-# Yggdrasil Project - Session Context & Progress
+# Yggdrasil - DynamoDB Migration to AWS
 
-**Date:** November 18, 2025  
-**Project:** Yggdrasil Family Tree Application  
-**Status:** In Progress - Step 7 Complete, Ready for Step 8 (Git Setup)
-
----
-
-## Project Overview
-
-Building a Next.js + React family tree application with AWS DynamoDB backend. The app allows users to create, view, and edit their family heritage with interactive tree visualization.
-
-**Key Technologies:**
-
-- Next.js 16 (App Router) + React 19 + TypeScript
-- AWS DynamoDB (single-table design)
-- Docker (DynamoDB Local for development)
-- NextAuth.js v5 (authentication)
-- ReactFlow (tree visualization)
-- TanStack Query (state management)
+**Date:** November 19, 2025  
+**Task:** Migrate DynamoDB from local Docker to AWS (keep application running locally)  
+**Status:** Ready to migrate
 
 ---
 
-## Completed Steps (7/9)
+## Migration Overview
 
-### ✅ Step 1: Initialize Next.js Project with Dependencies
+**Current setup:**
 
-**What was done:**
+- Application: Running locally on Next.js dev server (localhost:3000)
+- Database: Local DynamoDB in Docker (localhost:8000)
+- Data: 30 items (1 user, 1 tree, 10 persons, 18 relationships)
 
-- Created Next.js 16 app with TypeScript, Tailwind CSS, ESLint
-- Installed 17 npm packages including:
-  - AWS SDK v3 (`@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-s3`)
-  - NextAuth.js v5 + bcryptjs (authentication)
-  - TanStack Query (React Query) + devtools
-  - ReactFlow (tree visualization)
-  - React Hook Form + Zod (form handling & validation)
-  - uuid, date-fns, clsx (utilities)
-  - tsx (TypeScript script execution)
-- Created comprehensive folder structure in `src/`:
-  - `components/` (ui, layout, tree, person, auth)
-  - `lib/` (aws, services, utils, hooks)
-  - `types/` (TypeScript definitions)
-  - `constants/` (app-wide constants)
-- Added project folders: `scripts/`, `docs/`, `infrastructure/`, `public/images/`
-- Updated `package.json` with Docker and database scripts:
-  - `docker:up`, `docker:down`, `docker:logs`
-  - `db:setup`, `db:seed`, `db:backup`
-- Created `docs/ARCHITECTURE.md` with detailed project documentation
+**Goal:**
 
-**Files created:**
+- Application: Keep running locally
+- Database: Migrate to AWS DynamoDB
+- Data: Transfer existing data to AWS (optional)
 
-- Complete Next.js project structure
-- `docs/ARCHITECTURE.md` (comprehensive architecture guide)
-- Updated `package.json` with custom scripts
-- Updated `.gitignore` with Docker and AWS exclusions
+**Why this works:**
+The app was built with dual-environment support. It automatically switches between local and AWS based on the `DYNAMODB_ENDPOINT` environment variable.
 
 ---
 
-### ✅ Step 2: Configure Docker Environment
+## Step 1: Create DynamoDB Table on AWS
 
-**What was done:**
+### 1.1 Access AWS Console
 
-- Created `docker-compose.yml` with two services:
-  1. **DynamoDB Local** (port 8000) - Full-featured local DynamoDB
-  2. **DynamoDB Admin UI** (port 8001) - Web interface for viewing tables
-- Configured data persistence with volume mount (`./docker/dynamodb-data:/data`)
-- Set up custom Docker network (`yggdrasil-network`)
-- Removed complex health checks for reliability
-- Started and verified both containers running successfully
-- Updated `.gitignore` to exclude `docker/` folder and backup files
-- Created `docs/DOCKER.md` with comprehensive Docker usage guide
+1. Log in to [AWS Console](https://console.aws.amazon.com)
+2. Navigate to **DynamoDB** service
+3. Select your preferred region (e.g., `us-east-1`)
 
-**Services running:**
+### 1.2 Create Table
 
-```
-✅ yggdrasil-dynamodb (port 8000)
-✅ yggdrasil-dynamodb-admin (port 8001)
-```
+Click **"Create table"** and configure:
 
-**Access points:**
+**Basic Settings:**
 
-- DynamoDB Local: http://localhost:8000
-- Admin UI: http://localhost:8001
+- **Table name:** `Yggdrasil` (or your preferred name)
+- **Partition key:** `PK` (Type: String)
+- **Sort key:** `SK` (Type: String)
 
-**Files created:**
+**Table Settings:**
 
-- `docker-compose.yml`
-- `docs/DOCKER.md` (Docker setup and troubleshooting guide)
-- Updated `.gitignore`
+- **Table class:** DynamoDB Standard
+- **Capacity mode:** On-demand
+- **Encryption:** Use AWS owned key (free)
 
----
+**Secondary Indexes:**
+Click **"Create global index"** three times for these GSIs:
 
-### ✅ Step 3: Set Up Dual-Environment AWS Configuration
+**GSI1:**
 
-**What was done:**
+- Index name: `GSI1`
+- Partition key: `GSI1PK` (String)
+- Sort key: `GSI1SK` (String)
+- Projected attributes: All
 
-- Created environment configuration files:
-  - `.env.local` (local development with Docker)
-  - `.env.production.template` (production AWS template)
-- Built smart configuration system in `src/lib/aws/config.ts`:
-  - Automatic environment detection based on `DYNAMODB_ENDPOINT`
-  - Exports: `dynamoDBConfig`, `s3Config`, `cognitoConfig`, `authConfig`, `appConfig`
-  - Validation function with error checking
-  - Debug logging in development mode
-- Created DynamoDB client in `src/lib/aws/dynamodb.ts`:
-  - Low-level client for admin operations
-  - Document Client for application CRUD (auto-converts types)
-  - Utility functions: `checkDynamoDBConnection()`, `checkTableExists()`, `getTableInfo()`
-  - Startup connection verification
-- Created S3 client in `src/lib/aws/s3.ts`:
-  - Pre-signed URL generation (upload/download)
-  - Server-side file operations
-  - Works with LocalStack or AWS S3
-- Created comprehensive documentation in `docs/AWS-CONFIGURATION.md`
+**GSI2:**
 
-**Key Concept - Dual Environment:**
+- Index name: `GSI2`
+- Partition key: `GSI2PK` (String)
+- Sort key: `GSI2SK` (String)
+- Projected attributes: All
 
-```typescript
-// Local (.env.local)
-DYNAMODB_ENDPOINT=http://localhost:8000  → Uses Docker
+**GSI3:**
 
-// Production (.env.production)
-DYNAMODB_ENDPOINT=                       → Uses AWS
-```
+- Index name: `GSI3`
+- Partition key: `GSI3PK` (String)
+- Sort key: `GSI3SK` (String)
+- Projected attributes: All
 
-**Files created:**
+**Tags (optional):**
 
-- `.env.local` (local dev configuration)
-- `.env.production.template` (production template)
-- `src/lib/aws/config.ts` (central configuration)
-- `src/lib/aws/dynamodb.ts` (DynamoDB clients)
-- `src/lib/aws/s3.ts` (S3 client)
-- `docs/AWS-CONFIGURATION.md` (configuration guide)
+- Key: `Project`, Value: `Yggdrasil`
+- Key: `Environment`, Value: `Development`
 
-**How it works:**
-
-- Same code runs in both environments
-- No if/else logic needed in application
-- Switch by setting/unsetting `DYNAMODB_ENDPOINT`
-- Document Client auto-converts JavaScript ↔ DynamoDB format
+Click **"Create table"** - takes about 1-2 minutes to become active.
 
 ---
 
-### ✅ Step 4: Set Up DynamoDB Table and Seed Data
+## Step 2: Create IAM User for Application Access
 
-**What was done:**
+### 2.1 Navigate to IAM
 
-- Created DynamoDB table schema definition in `scripts/setup-dynamodb.ts`:
-  - Table name: `Yggdrasil`
-  - Partition Key: `PK` (String)
-  - Sort Key: `SK` (String)
-  - 3 Global Secondary Indexes (GSI1, GSI2, GSI3)
-  - On-demand billing mode
-  - Table created successfully in local DynamoDB
-- Defined TypeScript types in `src/types/`:
-  - `person.ts` - Person entity with Zod validation
-  - `relationship.ts` - Relationship types (Parent, Spouse, Sibling)
-  - `tree.ts` - Family tree metadata
-  - `auth.ts` - User authentication types
-- Created comprehensive seed data script (`scripts/seed-data.ts`):
-  - 30 items seeded across all entity types
-  - 4 users including demo account (demo@yggdrasil.local / demo123)
-  - 3 family trees
-  - 15 persons across 3 generations
-  - 8 relationships (Parent, Spouse, Sibling)
-  - All entities properly indexed with GSIs
-- Created backup script (`scripts/backup-local-data.ts`):
-  - Backs up entire table to JSON with timestamp
-  - Stored in `backups/` folder
-  - Successfully tested (30 items backed up)
-- Created comprehensive schema documentation in `docs/DYNAMODB-SCHEMA.md`
+1. Go to **IAM** service in AWS Console
+2. Click **"Users"** in left sidebar
+3. Click **"Create user"**
 
-**Files created:**
+### 2.2 Configure User
 
-- `scripts/setup-dynamodb.ts` (280 lines)
-- `scripts/seed-data.ts` (800 lines)
-- `scripts/backup-local-data.ts` (150 lines)
-- `src/types/person.ts` (180 lines)
-- `src/types/relationship.ts` (120 lines)
-- `src/types/tree.ts` (100 lines)
-- `src/types/auth.ts` (80 lines)
-- `docs/DYNAMODB-SCHEMA.md` (comprehensive schema guide)
-- `backups/yggdrasil-backup-20251118-085236.json` (backup file)
+**Step 1: User details**
 
-**Verified working:**
+- User name: `yggdrasil-app`
+- Check ☑ "Provide user access to AWS Management Console" - **OPTIONAL**
+- Select "I want to create an IAM user"
 
-- ✅ Table creation with all GSIs
-- ✅ 30 items seeded successfully
-- ✅ Demo user credentials working (demo@yggdrasil.local / demo123)
-- ✅ All entity types present (USER, TREE, PERSON, RELATIONSHIP)
-- ✅ Backup script functional
+Click **"Next"**
 
----
+**Step 2: Set permissions**
 
-### ✅ Step 5: Implement Authentication System
+- Select **"Attach policies directly"**
+- Search and select: `AmazonDynamoDBFullAccess`
 
-**What was done:**
+  _(Alternative: Create custom policy with least privilege - see below)_
 
-- Created NextAuth.js v5 configuration (`src/lib/auth/auth-options.ts`):
-  - Credentials provider with DynamoDB user lookup
-  - bcrypt password hashing (cost factor 10)
-  - Cognito provider setup (conditional, for production)
-  - JWT session strategy (stateless)
-  - Custom callbacks for session/JWT
-  - Removed PasswordHash from session for security
-- Created auth utilities (`src/lib/auth/auth.ts`):
-  - Exports `auth()`, `handlers`, `signIn`, `signOut` from NextAuth v5
-  - Central configuration export
-- Created API routes:
-  - `src/app/api/auth/[...nextauth]/route.ts` - NextAuth API handler
-  - `src/app/api/auth/register/route.ts` - User registration with Zod validation
-- Created authentication pages:
-  - `src/app/auth/signin/page.tsx` - Custom sign-in page with demo credentials
-  - `src/app/auth/register/page.tsx` - User registration form
-- Created server-side session utilities (`src/lib/auth/session.ts`):
-  - `getCurrentUser()` - Get current session user
-  - `requireAuth()` - Protect routes (throws 401)
-  - `requireOwnership()` - Verify resource ownership
-  - `getCurrentUserId()` - Get current user ID
-  - `isAuth()` - Check if authenticated
-- Created client components:
-  - `src/lib/auth/session-provider.tsx` - SessionProvider wrapper
-  - `src/components/auth/sign-out-button.tsx` - Sign-out button
-- Updated root layout with SessionProvider
-- Created beautiful landing page with auth-aware UI
+Click **"Next"**
 
-**CRITICAL FIX APPLIED:**
+**Step 3: Review and create**
 
-- **Issue:** NextAuth v5 breaking change - `getServerSession` doesn't exist
-- **Solution:** Created `src/lib/auth/auth.ts` exporting `auth()` function
-- **Changes:** Updated all imports from `getServerSession` to `auth()`
-- **Type Fix:** Changed `NextAuthOptions` to `NextAuthConfig`
-- **Result:** ✅ Authentication system fully functional
+- Review settings
+- Click **"Create user"**
 
-**Files created:**
+### 2.3 Create Access Keys
 
-- `src/lib/auth/auth-options.ts` (410 lines)
-- `src/lib/auth/auth.ts` (NEW - critical fix)
-- `src/lib/auth/session.ts` (170 lines)
-- `src/lib/auth/session-provider.tsx` (client wrapper)
-- `src/app/api/auth/[...nextauth]/route.ts`
-- `src/app/api/auth/register/route.ts` (180 lines)
-- `src/app/auth/signin/page.tsx` (240 lines)
-- `src/app/auth/register/page.tsx` (220 lines)
-- `src/components/auth/sign-out-button.tsx`
-- Updated `src/app/layout.tsx` (wrapped with SessionProvider)
-- Updated `src/app/page.tsx` (landing page with auth UI)
+1. Click on the newly created user `yggdrasil-app`
+2. Go to **"Security credentials"** tab
+3. Scroll to **"Access keys"** section
+4. Click **"Create access key"**
+5. Select use case: **"Application running outside AWS"**
+6. Click **"Next"**
+7. Description: `Yggdrasil local development`
+8. Click **"Create access key"**
 
-**Verified working:**
+**⚠️ IMPORTANT:**
 
-- ✅ Dev server running on localhost:3000
-- ✅ Sign-in page functional at /auth/signin
-- ✅ Demo user can authenticate (demo@yggdrasil.local / demo123)
-- ✅ Session management working
-- ✅ DynamoDB connection verified
-- ✅ No TypeScript errors
-- ✅ GET / returns 200 OK
+- Copy **Access key ID** (starts with AKIA...)
+- Copy **Secret access key** (shown only once!)
+- Download CSV or save these somewhere secure
+- You'll need these for `.env.local`
 
----
+### 2.4 (Optional) Custom Policy for Least Privilege
 
-## Current State
+Instead of `AmazonDynamoDBFullAccess`, create a custom policy:
 
-**What's working:**
-
-- ✅ Next.js dev server running (localhost:3000)
-- ✅ Docker services running (DynamoDB + Admin UI)
-- ✅ DynamoDB table created with 30 seed items
-- ✅ Configuration system working (local environment)
-- ✅ AWS clients connected to local DynamoDB
-- ✅ Authentication system fully functional
-- ✅ Demo user can sign in
-- ✅ Landing page with auth-aware UI
-
-**What's ready to use:**
-
-- Complete authentication flow (sign-in, register, sign-out)
-- DynamoDB with sample data (4 users, 3 trees, 15 persons, 8 relationships)
-- Session utilities for protected routes
-- TypeScript types for all entities
-- Backup capability for local data
-
-**Services running:**
-
-```
-✅ yggdrasil-dynamodb (port 8000)
-✅ yggdrasil-dynamodb-admin (port 8001)
-✅ Next.js dev server (port 3000)
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:BatchGetItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/Yggdrasil",
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/Yggdrasil/index/*"
+      ]
+    }
+  ]
+}
 ```
 
----
-
-### ✅ Step 6: Build API Routes and Data Access Layer
-
-**What was done:**
-
-- Created comprehensive service layer in `src/lib/services/`:
-
-  - `tree-service.ts` (290 lines) - Full CRUD for family trees
-    - createTree(), getTree(), getUserTrees(), updateTree(), deleteTree()
-    - incrementTreePersonCount(), decrementTreePersonCount()
-    - Proper GSI key management (GSI1PK, GSI2PK, GSI3PK)
-  - `person-service.ts` (349 lines) - Person management
-    - createPerson(), getPerson(), getTreePersons(), getUserPersons()
-    - updatePerson(), deletePerson(), searchPersonsByName()
-    - Automatic tree person count updates
-  - `relationship-service.ts` (411 lines) - Bidirectional relationships
-    - createRelationship(), getPersonRelationships(), getTreeRelationships()
-    - getPersonParents(), getPersonChildren(), getPersonSpouses(), getPersonSiblings()
-    - deleteRelationship(), relationshipExists()
-    - Creates TWO records per relationship (forward + reverse)
-
-- Created API routes in `src/app/api/`:
-
-  - Trees: `/api/trees/route.ts`, `/api/trees/[treeId]/route.ts`
-  - Persons: `/api/persons/route.ts`, `/api/persons/[personId]/route.ts`
-  - Relationships: `/api/relationships/route.ts`
-  - All routes include authentication checks with getCurrentUser()
-  - Full CRUD operations (GET, POST, PATCH, DELETE)
-  - Zod validation on all inputs
-  - Proper error handling with status codes
-
-- Created React Query hooks in `src/lib/hooks/`:
-
-  - `useTrees.ts` - useTrees(), useTree(), useCreateTree(), useUpdateTree(), useDeleteTree()
-  - `usePersons.ts` - usePersons(), usePerson(), useCreatePerson(), useUpdatePerson(), useDeletePerson()
-  - `useRelationships.ts` - useTreeRelationships(), usePersonRelationships(), useCreateRelationship(), useDeleteRelationship()
-  - Automatic cache invalidation on mutations
-  - Proper query key structure for optimal caching
-
-- **CRITICAL FIX:** Fixed massive type mismatch issue
-  - Problem: Services used PascalCase (TreeId, UserId) but types defined camelCase (treeId, userId)
-  - Solution: Changed ALL DynamoDB property names to camelCase throughout services
-  - Updated: itemToTree(), itemToPerson(), all update expressions, all key structures
-  - Result: ✅ Complete type consistency across entire codebase
-
-**Files created:**
-
-- `src/lib/services/tree-service.ts` (290 lines)
-- `src/lib/services/person-service.ts` (349 lines)
-- `src/lib/services/relationship-service.ts` (411 lines)
-- `src/app/api/trees/route.ts`
-- `src/app/api/trees/[treeId]/route.ts`
-- `src/app/api/persons/route.ts`
-- `src/app/api/persons/[personId]/route.ts`
-- `src/app/api/relationships/route.ts`
-- `src/lib/hooks/useTrees.ts`
-- `src/lib/hooks/usePersons.ts`
-- `src/lib/hooks/useRelationships.ts`
-- Updated `src/types/tree.ts` (added TreeCreateInput, TreeUpdateInput)
-- Updated `src/types/person.ts` (added PersonCreateInput, PersonUpdateInput)
-- Updated `src/types/relationship.ts` (added SimpleRelationship, RelationshipCreateInput)
-
-**Verified working:**
-
-- ✅ Dev server running successfully
-- ✅ All API routes accessible
-- ✅ DynamoDB connections working
-- ✅ Type system fully consistent (camelCase everywhere)
-- ✅ No TypeScript compile errors
+Replace `REGION` and `ACCOUNT_ID` with your values.
 
 ---
 
-### ✅ Step 7: Develop UI Components and Tree Visualization
+## Step 3: Update Local Environment Configuration
 
-**What was done:**
+### 3.1 Backup Current Data (Optional)
 
-- Created base UI components in `src/components/ui/`:
+If you want to keep your test data:
 
-  - `Button.tsx` - Button with variants (primary/secondary/danger/ghost), sizes (sm/md/lg), loading state
-  - `Input.tsx` - Text input with label, error handling, helper text (fixed useId purity issue)
-  - `Card.tsx` - Card, CardHeader, CardContent, CardFooter composable components
-  - `Modal.tsx` - Modal overlay with backdrop, size variants (sm/md/lg/xl), close button
-  - `Select.tsx` - Dropdown select with label and error handling
-
-- Created layout components in `src/components/layout/`:
-
-  - `Navbar.tsx` - Navigation header with logo, nav links, user menu, SignOutButton integration
-  - `DashboardLayout.tsx` - Layout wrapper for authenticated pages with navbar
-
-- Created dashboard pages:
-
-  - `src/app/dashboard/page.tsx` (200 lines) - Main dashboard with stats cards, recent trees, quick actions
-  - `src/app/trees/page.tsx` (180 lines) - Trees listing page with create modal, grid view, empty state
-
-- Created person components in `src/components/person/`:
-
-  - `PersonForm.tsx` (220 lines) - Comprehensive form with sections:
-    - Basic Information (firstName\*, lastName, middleName, maidenName, nickname, gender)
-    - Life Events (isLiving checkbox, birth/death dates and places)
-    - Additional Information (occupation, biography, notes)
-  - `PersonCard.tsx` - Display card with avatar, name, nickname, life years, gender icons
-
-- Created tree visualization with ReactFlow:
-
-  - Installed `@xyflow/react` package
-  - `src/components/tree/TreeVisualization.tsx` (276 lines):
-    - Hierarchical tree layout algorithm with BFS traversal
-    - Automatic node positioning based on generation levels
-    - Three relationship edge types (Parent-Child: blue solid, Spouse: pink dashed, Sibling: green dashed)
-    - ReactFlow controls (zoom, pan, minimap)
-    - Legend showing relationship types
-    - Empty state for trees with no persons
-  - `src/components/tree/PersonNode.tsx` (137 lines):
-    - Custom ReactFlow node displaying person info
-    - Avatar with initials, gender-based colors
-    - Birth/death years, birthPlace, occupation
-    - Hover effects and selection states
-  - `src/app/trees/[treeId]/page.tsx` (211 lines):
-    - Tree detail page with header, breadcrumbs
-    - View toggle between Tree View and List View
-    - Add person modal integration
-    - Settings button for tree configuration
-
-- **CRITICAL FIX:** Added QueryClientProvider
-  - Problem: "No QueryClient set" error when loading dashboard
-  - Solution: Created `src/lib/providers/query-provider.tsx` with QueryClient setup
-  - Updated `src/app/layout.tsx` to wrap app with QueryProvider
-  - Result: ✅ React Query hooks working throughout app
-
-**Files created:**
-
-- `src/components/ui/Button.tsx`
-- `src/components/ui/Input.tsx`
-- `src/components/ui/Card.tsx`
-- `src/components/ui/Modal.tsx`
-- `src/components/ui/Select.tsx`
-- `src/components/layout/Navbar.tsx`
-- `src/components/layout/DashboardLayout.tsx`
-- `src/app/dashboard/page.tsx`
-- `src/app/trees/page.tsx`
-- `src/app/trees/[treeId]/page.tsx`
-- `src/components/person/PersonForm.tsx`
-- `src/components/person/PersonCard.tsx`
-- `src/components/tree/TreeVisualization.tsx`
-- `src/components/tree/PersonNode.tsx`
-- `src/lib/providers/query-provider.tsx`
-- Updated `src/app/layout.tsx` (added QueryProvider)
-- Fixed `src/app/auth/signin/page.tsx` (escaped apostrophe)
-
-**Verified working:**
-
-- ✅ Dev server running on localhost:3000
-- ✅ User authentication working (demo@yggdrasil.local / demo123)
-- ✅ Dashboard loads successfully
-- ✅ Trees API endpoint returning 200
-- ✅ QueryClientProvider configured correctly
-- ✅ All UI components rendering without errors
-- ✅ ReactFlow integration ready for tree visualization
-- ✅ No runtime errors in browser console
-
----
-
-## Next Steps (Step 8)
-
-**Step 6: Build API Routes and Data Access Layer**
-
-Will implement:
-
-1. **Table Schema Definition** - Define DynamoDB table structure:
-
-   - Table name: `Yggdrasil`
-   - Partition Key: `PK` (String)
-   - Sort Key: `SK` (String)
-   - 3 Global Secondary Indexes (GSI1, GSI2, GSI3)
-   - Billing mode: On-demand (pay per request)
-
-2. **Setup Script** (`scripts/setup-dynamodb.ts`):
-
-   - Check if table exists
-   - Create table with proper schema
-   - Wait for table to be active
-   - Verify GSIs are created
-   - Error handling and logging
-
-3. **Data Models** (`src/types/`):
-
-   - `person.ts` - Person entity type and Zod schema
-   - `relationship.ts` - Relationship types and schemas
-   - `tree.ts` - Family tree metadata types
-   - `auth.ts` - User and authentication types
-
-4. **Seed Data Script** (`scripts/seed-data.ts`):
-
-   - Create sample family tree (3 generations)
-   - Multiple relationship types (biological, spousal)
-   - Various person attributes (names, dates, places)
-   - Can be run repeatedly (clears old data first)
-
-5. **Backup Script** (`scripts/backup-local-data.ts`):
-
-   - Scan all items from table
-   - Save to JSON file with timestamp
-   - Store in `backups/` folder
-
-6. **DynamoDB Schema Documentation** (`docs/DYNAMODB-SCHEMA.md`):
-   - Complete schema documentation
-   - Access patterns with examples
-   - Query patterns for each GSI
-   - Data modeling best practices
-
-**Why this order:**
-
-- Need table before we can store data
-- Need types before we can create services
-- Seed data helps test everything works
-- Schema doc helps future development
-
----
-
-## Remaining Steps (8-9)
-
-**Step 8: Initialize Git Repository and Push to GitHub (NEXT)**
-
-- Initialize Git repository (`git init`)
-- Create comprehensive `.gitignore`
-- Make initial commit with all files
-- Create GitHub repository
-- Push to remote
-- Set up branch protection (optional)
-- Create README with setup instructions
-
-**Step 9: Prepare AWS Deployment Configuration**
-
-- AWS CDK/CloudFormation templates for infrastructure:
-  - DynamoDB table with GSIs
-  - Cognito User Pool and App Client
-  - S3 bucket for media uploads
-  - CloudFront distribution (optional)
-- AWS Amplify deployment configuration
-- Environment variables setup for production
-- Migration guide from local to AWS
-- Cost estimation and optimization tips
-- Monitoring and logging setup
-
----
-
-## Important Commands
-
-**Docker:**
-
-```powershell
-npm run docker:up      # Start Docker services
-npm run docker:down    # Stop Docker services
-npm run docker:logs    # View logs
+```bash
+npm run db:backup
 ```
 
-**Database (after Step 4):**
+This creates: `backups/yggdrasil-backup-YYYYMMDD-HHMMSS.json`
 
-```powershell
-npm run db:setup       # Create DynamoDB tables
-npm run db:seed        # Load sample data
-npm run db:backup      # Backup local data
+### 3.2 Update `.env.local`
+
+Open `c:\Users\Max\Documents\AWS\yggdrasil\.env.local` and modify:
+
+**Before (Local Docker):**
+
+```bash
+# Database Configuration
+DYNAMODB_ENDPOINT=http://localhost:8000
+DYNAMODB_REGION=us-east-1
+DYNAMODB_TABLE_NAME=Yggdrasil
+
+# AWS Credentials (not needed for local)
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+
+# Auth Configuration
+NEXTAUTH_SECRET=your-existing-secret-keep-this
+NEXTAUTH_URL=http://localhost:3000
+
+# S3 Configuration (not used yet)
+S3_BUCKET_NAME=yggdrasil-photos-local
+S3_REGION=us-east-1
 ```
 
-**Development:**
+**After (AWS DynamoDB):**
 
-```powershell
-npm run dev            # Start Next.js dev server
-npm run build          # Build for production
-npm run lint           # Run ESLint
+```bash
+# Database Configuration
+# DYNAMODB_ENDPOINT=http://localhost:8000  <-- COMMENT OUT OR REMOVE
+DYNAMODB_REGION=us-east-1                   <-- Your AWS region
+DYNAMODB_TABLE_NAME=Yggdrasil               <-- Your table name
+
+# AWS Credentials
+AWS_REGION=us-east-1                        <-- Same as DYNAMODB_REGION
+AWS_ACCESS_KEY_ID=AKIA...                   <-- From Step 2.3
+AWS_SECRET_ACCESS_KEY=abc123...             <-- From Step 2.3
+
+# Auth Configuration (KEEP THESE SAME)
+NEXTAUTH_SECRET=your-existing-secret-keep-this
+NEXTAUTH_URL=http://localhost:3000
+
+# S3 Configuration (not used yet)
+S3_BUCKET_NAME=yggdrasil-photos-local
+S3_REGION=us-east-1
 ```
 
-**Access Points:**
+**Key Changes:**
 
-- App: http://localhost:3000
-- DynamoDB Admin: http://localhost:8001
-- DynamoDB Endpoint: http://localhost:8000
+1. ❌ Remove or comment out `DYNAMODB_ENDPOINT` line
+2. ✅ Add your AWS credentials (Access Key ID and Secret)
+3. ✅ Verify region matches where you created the table
+4. ✅ Keep all other settings the same
 
----
+### 3.3 Restart Dev Server
 
-## Key Files to Remember
+Stop the current dev server (Ctrl+C) and restart:
 
-**Configuration:**
-
-- `.env.local` - Local environment variables
-- `src/lib/aws/config.ts` - Central configuration
-- `src/lib/aws/dynamodb.ts` - DynamoDB clients
-- `docker-compose.yml` - Docker services
-
-**Documentation:**
-
-- `docs/ARCHITECTURE.md` - Project architecture
-- `docs/DOCKER.md` - Docker setup guide
-- `docs/AWS-CONFIGURATION.md` - AWS configuration guide
-- `README.md` - Project overview
-
-**Scripts (to be created in Step 4):**
-
-- `scripts/setup-dynamodb.ts` - Table creation
-- `scripts/seed-data.ts` - Sample data
-- `scripts/backup-local-data.ts` - Data backup
-
----
-
-## DynamoDB Single-Table Design (Planned)
-
-**Table: Yggdrasil**
-
-**Keys:**
-
-- PK (Partition Key): String
-- SK (Sort Key): String
-
-**Global Secondary Indexes:**
-
-- GSI1: GSI1PK / GSI1SK (reverse lookups)
-- GSI2: TreeId / CreatedAt (tree-based queries)
-- GSI3: UserId / UpdatedAt (user's data queries)
-
-**Entity Types:**
-
-1. User - `PK: USER#<userId>`, `SK: PROFILE`
-2. Tree - `PK: USER#<userId>`, `SK: TREE#<treeId>`
-3. Person - `PK: USER#<userId>`, `SK: PERSON#<personId>`
-4. Relationship - `PK: PERSON#<id1>`, `SK: PARENT|SPOUSE#<id2>`
-
-**Access Patterns:**
-
-- Get all trees for a user
-- Get all persons in a tree
-- Get person details
-- Get parents of a person
-- Get children of a person
-- Get spouse(s) of a person
-- Get all relationships in a tree
-
----
-
-## Technical Decisions Made
-
-1. **Single-table design** for DynamoDB (cost-effective, performant)
-2. **Document Client** for application code (simpler than raw client)
-3. **Docker for local development** (zero AWS costs, offline work)
-4. **NextAuth.js** for flexible auth (local credentials + Cognito)
-5. **ReactFlow** for tree visualization (purpose-built for graphs)
-6. **TanStack Query** for data fetching (automatic caching, refetching)
-7. **Zod** for validation (runtime + TypeScript types)
-8. **On-demand billing** for DynamoDB (no capacity planning needed)
-
----
-
-## Notes for Tomorrow
-
-1. **Docker should still be running** - verify with `docker ps`
-2. **Start with Step 4** - creating database setup scripts
-3. **Test each script** as we create it (setup → seed → backup)
-4. **Document the schema** thoroughly for future reference
-5. **Keep explanations detailed** as requested by user
-
-**Remember:** User wants each step explained in detail when executed!
-
----
-
-## Quick Health Check (Run Tomorrow)
-
-```powershell
-# 1. Check Docker is running
-docker ps
-
-# 2. Check Node/npm
-node --version
-npm --version
-
-# 3. Verify project structure
-ls src/lib/aws
-
-# 4. Check environment file
-cat .env.local
-
-# 5. Test dev server (optional)
+```bash
 npm run dev
 ```
 
----
-
-## Progress Tracker
+Watch the console output - you should see:
 
 ```
-[████████████████████████████████░░] 77.8% Complete
+🔧 AWS Configuration Loaded:
+- Environment: development
+- DynamoDB Mode: AWS (Production)          <-- Changed!
+- DynamoDB Region: us-east-1
+- DynamoDB Table: Yggdrasil
+✅ Configuration Valid
+✅ DynamoDB connection successful
+✅ Table "Yggdrasil" exists
+```
 
-✅ Step 1: Project initialization
-✅ Step 2: Docker environment
-✅ Step 3: AWS configuration
-✅ Step 4: Database setup & seed data
-✅ Step 5: Authentication system
-✅ Step 6: API routes & services
-✅ Step 7: UI & visualization
-→  Step 8: Git repository setup (NEXT)
-⬜ Step 9: AWS deployment prep
+If you see **"DynamoDB Mode: AWS (Production)"** instead of "Local (Docker)", you're connected to AWS! 🎉
+
+---
+
+## Step 4: Migrate Data to AWS (Optional)
+
+You have two options:
+
+### Option A: Start Fresh
+
+The table is empty. Just create a new account and start using it.
+
+### Option B: Transfer Existing Data
+
+Create a migration script to copy your local data to AWS:
+
+**Create:** `scripts/migrate-to-aws.ts`
+
+```typescript
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  BatchWriteCommand,
+} from "@aws-sdk/lib-dynamodb";
+import * as fs from "fs";
+import * as path from "path";
+
+// Connect to AWS (using credentials from .env.local)
+const awsClient = new DynamoDBClient({
+  region: process.env.DYNAMODB_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+
+const awsDocClient = DynamoDBDocumentClient.from(awsClient);
+
+async function migrateData() {
+  console.log("\n=== Migrating Data to AWS DynamoDB ===\n");
+
+  // Find the most recent backup
+  const backupsDir = path.join(process.cwd(), "backups");
+  const files = fs.readdirSync(backupsDir).filter((f) => f.endsWith(".json"));
+
+  if (files.length === 0) {
+    console.error("❌ No backup files found. Run 'npm run db:backup' first.");
+    process.exit(1);
+  }
+
+  const latestBackup = files.sort().reverse()[0];
+  const backupPath = path.join(backupsDir, latestBackup);
+
+  console.log(`📂 Loading backup: ${latestBackup}`);
+  const data = JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+
+  console.log(`📊 Found ${data.items.length} items to migrate\n`);
+
+  // Batch write to AWS (25 items at a time - DynamoDB limit)
+  const tableName = process.env.DYNAMODB_TABLE_NAME || "Yggdrasil";
+  let migrated = 0;
+
+  for (let i = 0; i < data.items.length; i += 25) {
+    const batch = data.items.slice(i, i + 25);
+
+    try {
+      await awsDocClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [tableName]: batch.map((item: any) => ({
+              PutRequest: { Item: item },
+            })),
+          },
+        })
+      );
+
+      migrated += batch.length;
+      console.log(`✓ Migrated ${migrated}/${data.items.length} items`);
+    } catch (error) {
+      console.error(`❌ Error migrating batch:`, error);
+    }
+  }
+
+  console.log(`\n✅ Migration complete! ${migrated} items transferred to AWS.`);
+}
+
+migrateData();
+```
+
+**Run migration:**
+
+```bash
+npx tsx scripts/migrate-to-aws.ts
 ```
 
 ---
 
-## Key Lessons Learned
+## Step 5: Test the Connection
 
-**NextAuth.js v5 Breaking Changes:**
+### 5.1 Test Authentication
 
-- `getServerSession` no longer exists - use `auth()` function instead
-- `NextAuthOptions` type renamed to `NextAuthConfig`
-- Must export handlers from NextAuth() call for API routes
-- Session callbacks have different signatures in v5
-- Always create `src/lib/auth/auth.ts` to export auth functions centrally
+1. Open http://localhost:3000
+2. Sign in with: `demo@yggdrasil.local` / `demo123`
+3. Should work if you migrated data, or create a new account if starting fresh
 
-**DynamoDB Best Practices:**
+### 5.2 Test CRUD Operations
 
-- Single-table design with generic PK/SK keys
-- Use GSIs for multiple access patterns
-- Document Client simplifies CRUD operations
-- Always include error handling for conditional writes
-- Use descriptive entity prefixes (USER#, TREE#, PERSON#)
+1. Create a new family tree
+2. Add a person
+3. Verify data appears in AWS:
+   - Go to AWS Console → DynamoDB → Tables → Yggdrasil
+   - Click "Explore table items"
+   - Should see your data!
 
-**Docker Development:**
+### 5.3 Verify in Console Output
 
-- DynamoDB Local works perfectly for offline development
-- Persist data with volume mounts
-- Admin UI on port 8001 is helpful for debugging
-- Keep containers running between sessions
-
----
-
-## Important Demo Credentials
-
-**Test User Account:**
-
-```
-Email: demo@yggdrasil.local
-Password: demo123
-User ID: user-demo-001
-```
-
-**Demo Family Trees:**
-
-- Nordic Mythology Tree (tree-001)
-- Olympian Gods Tree (tree-002)
-- Egyptian Deities Tree (tree-003)
-
-All trees owned by demo user and contain sample persons with relationships.
-
----
-
-**Session End:** November 18, 2025  
-**Ready to Resume:** Step 8 - Initialize Git repository and push to GitHub  
-**Estimated Time for Step 8:** 15-20 minutes
-
-Excellent stopping point! Full-stack application is complete and tested. All UI components working. Backend API functional. Ready for version control setup. 🚀
-
----
-
-## Testing Summary (Step 7)
-
-**What was tested:**
-
-✅ **Authentication Flow**
-
-- User sign-in working (demo@yggdrasil.local successfully authenticated)
-- Session management functional across page navigation
-- Sign-out working correctly
-- Protected routes redirect to sign-in when unauthenticated
-
-✅ **Dashboard & Navigation**
-
-- Dashboard page loads successfully (GET /dashboard 200)
-- QueryClientProvider properly configured
-- Stats display working (tree count, person count)
-- Navigation between pages functional (Navbar links working)
-
-✅ **API Endpoints**
-
-- `/api/trees` - Returns 200, fetches user's trees
-- `/api/persons?treeId=xxx` - Working with query parameters
-- `/api/relationships?treeId=xxx` - Fetching relationships correctly
-- `/api/auth/session` - Session validation working
-
-✅ **Database Connection**
-
-- DynamoDB Local connection successful
-- Table "Yggdrasil" accessible
-- All CRUD operations functional
-- 30 seed items available for testing
-
-✅ **UI Components**
-
-- All pages compile successfully without TypeScript errors
-- Tailwind CSS processing working (Hot reload functional)
-- ReactFlow integration ready for tree visualization
-- Fast Refresh working for development
-
-**Server Logs Confirmed:**
+Check the terminal where `npm run dev` is running:
 
 ```
 ✅ DynamoDB connection successful
+✅ DynamoDB is accessible
 ✅ Table "Yggdrasil" exists
-User signed in: demo@yggdrasil.local
 GET /api/trees 200
-GET /dashboard 200
+POST /api/persons 200
 ```
 
-**Minor Issues Fixed:**
+All operations should return 200 (success).
 
-- QueryClientProvider missing → Added to root layout
-- Apostrophe in signin page → Escaped to &apos;
-- PersonNode type errors → Fixed with correct interface structure
+---
 
-**Ready for Production Checklist:**
+## Troubleshooting
 
-- ✅ Authentication system complete
-- ✅ All API routes working
-- ✅ UI components functional
-- ✅ Database operations tested
-- ⏳ Git repository (Step 8)
-- ⏳ AWS deployment config (Step 9)
+### Connection Fails
+
+**Error:** `ResourceNotFoundException: Requested resource not found`
+
+- Check table name in `.env.local` matches AWS exactly
+- Verify table status is ACTIVE in AWS Console
+
+**Error:** `UnrecognizedClientException: The security token included in the request is invalid`
+
+- Check AWS credentials are correct
+- Ensure no extra spaces in `.env.local`
+- Try regenerating access keys in IAM
+
+**Error:** `AccessDeniedException: User is not authorized to perform: dynamodb:Query`
+
+- IAM user needs proper permissions
+- Attach `AmazonDynamoDBFullAccess` policy or custom policy
+
+### Slow Performance
+
+- Check you're in the right AWS region (closer = faster)
+- On-demand mode has no performance limits
+- Consider switching to provisioned capacity if needed
+
+### Cost Concerns
+
+- Check DynamoDB pricing page
+- Set up CloudWatch billing alerts
+- Use AWS Cost Explorer to monitor
+
+---
+
+## Reverting to Local (If Needed)
+
+To switch back to local Docker:
+
+1. Uncomment in `.env.local`:
+
+   ```bash
+   DYNAMODB_ENDPOINT=http://localhost:8000
+   ```
+
+2. Restart dev server:
+   ```bash
+   npm run dev
+   ```
+
+That's it! The app automatically switches back to local mode.
+
+---
+
+## What Stays Local vs AWS
+
+**Running on Your Machine:**
+
+- ✅ Next.js dev server (localhost:3000)
+- ✅ All React components and pages
+- ✅ API routes (Next.js API)
+- ✅ NextAuth.js authentication
+- ✅ File system (.env.local, code, etc.)
+
+**Running on AWS:**
+
+- ☁️ DynamoDB table (data storage)
+- ☁️ Global Secondary Indexes
+- ☁️ IAM authentication for API calls
+
+**Not Used Yet:**
+
+- S3 (photo uploads)
+- Cognito (will use for production auth later)
+- CloudFront, Lambda, etc.
+
+---
+
+## Next Steps After Migration
+
+Once you verify everything works with AWS DynamoDB:
+
+1. **Update Documentation** - Note which environment you're using
+2. **Set Up Billing Alerts** - Monitor AWS costs
+3. **Plan Full Deployment** - Eventually deploy the entire app to Vercel/AWS
+4. **Implement S3** - Add photo upload functionality
+5. **Switch to Cognito** - Replace credentials auth with Cognito
+
+---
+
+## Cost Estimate
+
+**DynamoDB On-Demand Pricing (us-east-1):**
+
+- Write requests: $1.25 per million
+- Read requests: $0.25 per million
+- Storage: $0.25 per GB/month (first 25 GB free)
+
+**Your usage (development/testing):**
+
+- ~100 reads/day = 3,000/month = $0.00075
+- ~50 writes/day = 1,500/month = $0.00188
+- Storage: < 1 GB = FREE
+
+**Estimated monthly cost: < $0.01** (essentially free for development)
+
+**Note:** AWS Free Tier includes:
+
+- 25 GB storage
+- 25 read capacity units
+- 25 write capacity units
+- Good for 12 months
+
+---
+
+## Summary
+
+✅ **Before Migration:**
+
+- App: Local
+- DB: Docker (localhost:8000)
+
+✅ **After Migration:**
+
+- App: Still local (localhost:3000)
+- DB: AWS DynamoDB (cloud)
+
+✅ **Benefits:**
+
+- Real AWS environment for testing
+- Data persists (no Docker issues)
+- Practice for full deployment
+- Extremely low cost (< $1/month)
+
+✅ **No Changes Required:**
+
+- Code works exactly the same
+- Just environment variable changes
+- Automatic switching between local/AWS
+
+---
+
+**Ready to migrate tomorrow!** 🚀
