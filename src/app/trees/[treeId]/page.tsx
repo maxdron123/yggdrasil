@@ -36,8 +36,16 @@ export default function TreeDetailPage({
 
   const handleCreatePerson = async (data: PersonFormData) => {
     try {
+      // Clean up form data - convert empty strings to undefined
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          value === "" ? undefined : value,
+        ])
+      ) as PersonFormData;
+
       await createPerson.mutateAsync({
-        ...data,
+        ...cleanedData,
         treeId,
       });
       setIsAddPersonModalOpen(false);
