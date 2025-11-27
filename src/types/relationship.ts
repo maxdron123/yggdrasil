@@ -127,11 +127,11 @@ export type Relationship = ParentChildRelationship | SpousalRelationship;
 
 export const ParentChildRelationshipSchema = z
   .object({
-    relationshipId: z.string().uuid(),
-    treeId: z.string().uuid(),
+    relationshipId: z.string().min(1),
+    treeId: z.string().min(1),
     category: z.literal(RelationshipCategory.PARENT_CHILD),
-    childId: z.string().uuid(),
-    parentId: z.string().uuid(),
+    childId: z.string().min(1),
+    parentId: z.string().min(1),
     relationshipType: z.nativeEnum(ParentChildType),
     adoptionDate: z
       .string()
@@ -140,19 +140,19 @@ export const ParentChildRelationshipSchema = z
     isDirectParent: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
-    createdBy: z.string().uuid().optional(),
-    updatedBy: z.string().uuid().optional(),
+    createdBy: z.string().min(1).optional(),
+    updatedBy: z.string().min(1).optional(),
     notes: z.string().max(1000).optional(),
   })
   .strict();
 
 export const SpousalRelationshipSchema = z
   .object({
-    relationshipId: z.string().uuid(),
-    treeId: z.string().uuid(),
+    relationshipId: z.string().min(1),
+    treeId: z.string().min(1),
     category: z.literal(RelationshipCategory.SPOUSAL),
-    spouse1Id: z.string().uuid(),
-    spouse2Id: z.string().uuid(),
+    spouse1Id: z.string().min(1),
+    spouse2Id: z.string().min(1),
     status: z.nativeEnum(SpousalStatus),
     marriageDate: z
       .string()
@@ -167,8 +167,8 @@ export const SpousalRelationshipSchema = z
     isPrimaryRecord: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
-    createdBy: z.string().uuid().optional(),
-    updatedBy: z.string().uuid().optional(),
+    createdBy: z.string().min(1).optional(),
+    updatedBy: z.string().min(1).optional(),
     notes: z.string().max(1000).optional(),
   })
   .strict();
@@ -177,9 +177,9 @@ export const SpousalRelationshipSchema = z
  * Input schemas for creating relationships (omit auto-generated fields)
  */
 export const ParentChildInputSchema = z.object({
-  treeId: z.string().uuid(),
-  childId: z.string().uuid(),
-  parentId: z.string().uuid(),
+  treeId: z.string().min(1),
+  childId: z.string().min(1),
+  parentId: z.string().min(1),
   relationshipType: z.nativeEnum(ParentChildType),
   adoptionDate: z
     .string()
@@ -189,9 +189,9 @@ export const ParentChildInputSchema = z.object({
 });
 
 export const SpousalInputSchema = z.object({
-  treeId: z.string().uuid(),
-  spouse1Id: z.string().uuid(),
-  spouse2Id: z.string().uuid(),
+  treeId: z.string().min(1),
+  spouse1Id: z.string().min(1),
+  spouse2Id: z.string().min(1),
   status: z.nativeEnum(SpousalStatus),
   marriageDate: z
     .string()
@@ -373,8 +373,8 @@ export interface RelationshipCreateInput {
 }
 
 export const relationshipCreateSchema = z.object({
-  person1Id: z.string().uuid(),
-  person2Id: z.string().uuid(),
+  person1Id: z.string().min(1),
+  person2Id: z.string().min(1),
   relationshipType: z.enum(["Parent", "Child", "Spouse", "Sibling"]),
-  treeId: z.string().uuid(),
+  treeId: z.string().min(1),
 });

@@ -95,9 +95,9 @@ export interface Person {
 export const PersonSchema = z
   .object({
     // Required fields
-    userId: z.string().uuid("User ID must be a valid UUID"),
-    personId: z.string().uuid("Person ID must be a valid UUID"),
-    treeId: z.string().uuid("Tree ID must be a valid UUID"),
+    userId: z.string().min(1, "User ID is required"),
+    personId: z.string().min(1, "Person ID is required"),
+    treeId: z.string().min(1, "Tree ID is required"),
     firstName: z
       .string()
       .min(1, "First name is required")
@@ -183,7 +183,7 @@ export const PersonInputSchema = PersonSchema.omit({
   updatedBy: true,
 }).extend({
   // Override treeId to be optional in forms (can be set from context)
-  treeId: z.string().uuid().optional(),
+  treeId: z.string().min(1).optional(),
 });
 
 /**
