@@ -108,7 +108,7 @@ export const authOptions: NextAuthConfig = {
 
           // Verify password
           const passwordMatch = await bcrypt.compare(
-            credentials.password,
+            credentials.password as string,
             user.passwordHash
           );
 
