@@ -88,7 +88,7 @@ export const authOptions: NextAuthConfig = {
               IndexName: "GSI1",
               KeyConditionExpression: "GSI1PK = :email",
               ExpressionAttributeValues: {
-                ":email": credentials.email.toLowerCase(),
+                ":email": (credentials.email as string).toLowerCase(),
               },
               Limit: 1,
             })
