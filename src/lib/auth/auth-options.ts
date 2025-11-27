@@ -30,6 +30,14 @@ import { authConfig, cognitoConfig, dynamoDBConfig } from "../aws/config";
  */
 export const authOptions: NextAuthConfig = {
   /**
+   * Trust Host Configuration
+   *
+   * In production (especially on platforms like Amplify), NextAuth needs to
+   * explicitly trust the host. This prevents host header injection attacks.
+   */
+  trustHost: true,
+
+  /**
    * Authentication Providers
    *
    * Providers are authentication methods (email/password, OAuth, etc.)
