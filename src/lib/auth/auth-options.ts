@@ -89,6 +89,20 @@ export const authOptions: NextAuthConfig = {
         }
 
         try {
+          // Debug: Log configuration (production only)
+          console.log("Auth Debug - Config:", {
+            hasEndpoint: !!dynamoDBConfig.endpoint,
+            region: dynamoDBConfig.region,
+            tableName: dynamoDBConfig.tableName,
+            hasCredentials: !!dynamoDBConfig.credentials,
+            accessKeyId: dynamoDBConfig.credentials?.accessKeyId?.substring(0, 8) + "...",
+            env: {
+              REGION: process.env.REGION,
+              ACCESS_KEY_ID: process.env.ACCESS_KEY_ID?.substring(0, 8) + "...",
+              SECRET_ACCESS_KEY: process.env.SECRET_ACCESS_KEY ? "SET" : "NOT SET",
+            }
+          });
+
           // Look up user by email using GSI1
           const result = await docClient.send(
             new QueryCommand({
