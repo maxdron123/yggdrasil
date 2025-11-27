@@ -73,11 +73,6 @@ export function RelationshipForm({
           ]}
           required
           disabled={!!selectedPersonId}
-          helperText={
-            selectedPersonId
-              ? "Pre-selected from person card"
-              : "Choose the first person"
-          }
         />
 
         <Select
@@ -96,7 +91,6 @@ export function RelationshipForm({
             { value: "Sibling", label: "Sibling" },
           ]}
           required
-          helperText="How are they related?"
         />
 
         <Select
@@ -111,7 +105,6 @@ export function RelationshipForm({
             })),
           ]}
           required
-          helperText="Choose the second person in this relationship"
         />
       </div>
 
