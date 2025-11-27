@@ -14,10 +14,17 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PersonForm, PersonFormData } from "@/components/person/PersonForm";
 import { PersonCard } from "@/components/person/PersonCard";
+import {
+  RelationshipForm,
+  RelationshipFormData,
+} from "@/components/relationship/RelationshipForm";
 import TreeVisualization from "@/components/tree/TreeVisualization";
 import { useTree } from "@/lib/hooks/useTrees";
 import { usePersons, useCreatePerson } from "@/lib/hooks/usePersons";
-import { useTreeRelationships } from "@/lib/hooks/useRelationships";
+import {
+  useTreeRelationships,
+  useCreateRelationship,
+} from "@/lib/hooks/useRelationships";
 import Link from "next/link";
 
 export default function TreeDetailPage({
@@ -30,8 +37,14 @@ export default function TreeDetailPage({
   const { data: persons, isLoading: personsLoading } = usePersons(treeId);
   const { data: relationships } = useTreeRelationships(treeId);
   const createPerson = useCreatePerson(treeId);
+  const createRelationship = useCreateRelationship(treeId);
 
   const [isAddPersonModalOpen, setIsAddPersonModalOpen] = useState(false);
+  const [isAddRelationshipModalOpen, setIsAddRelationshipModalOpen] =
+    useState(false);
+  const [selectedPersonId, setSelectedPersonId] = useState<
+    string | undefined
+  >();
   const [showVisualization, setShowVisualization] = useState(true);
 
   const handleCreatePerson = async (data: PersonFormData) => {
@@ -52,6 +65,24 @@ export default function TreeDetailPage({
     } catch (error) {
       console.error("Failed to create person:", error);
     }
+  };
+
+  const handleCreateRelationship = async (data: RelationshipFormData) => {
+    try {
+      await createRelationship.mutateAsync({
+        ...data,
+        treeId,
+      });
+      setIsAddRelationshipModalOpen(false);
+      setSelectedPersonId(undefined);
+    } catch (error) {
+      console.error("Failed to create relationship:", error);
+    }
+  };
+
+  const handleAddRelationshipClick = (personId?: string) => {
+    setSelectedPersonId(personId);
+    setIsAddRelationshipModalOpen(true);
   };
 
   if (treeLoading) {
@@ -159,6 +190,25 @@ export default function TreeDetailPage({
               </svg>
               Add Person
             </Button>
+            <Button
+              onClick={() => handleAddRelationshipClick()}
+              variant="secondary"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                />
+              </svg>
+              Add Relationship
+            </Button>
           </div>
         </div>
 
@@ -265,6 +315,28 @@ export default function TreeDetailPage({
           onSubmit={handleCreatePerson}
           onCancel={() => setIsAddPersonModalOpen(false)}
           isLoading={createPerson.isPending}
+        />
+      </Modal>
+
+      {/* Add Relationship Modal */}
+      <Modal
+        isOpen={isAddRelationshipModalOpen}
+        onClose={() => {
+          setIsAddRelationshipModalOpen(false);
+          setSelectedPersonId(undefined);
+        }}
+        title="Add Relationship"
+        size="md"
+      >
+        <RelationshipForm
+          persons={persons || []}
+          selectedPersonId={selectedPersonId}
+          onSubmit={handleCreateRelationship}
+          onCancel={() => {
+            setIsAddRelationshipModalOpen(false);
+            setSelectedPersonId(undefined);
+          }}
+          isLoading={createRelationship.isPending}
         />
       </Modal>
     </DashboardLayout>
