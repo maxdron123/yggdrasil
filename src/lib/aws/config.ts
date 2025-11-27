@@ -18,15 +18,18 @@
  *
  * Local Development (.env.local):
  * - DYNAMODB_ENDPOINT=http://localhost:8000  (triggers local mode)
- * - AWS_REGION=us-east-1
+ * - AWS_REGION=us-east-1  (or REGION for Amplify)
  * - AWS_ACCESS_KEY_ID=local  (dummy value)
  * - AWS_SECRET_ACCESS_KEY=local  (dummy value)
  *
- * Production (.env.production):
+ * Production (Amplify - uses non-AWS_ prefixed names):
  * - DYNAMODB_ENDPOINT=  (unset - triggers AWS mode)
- * - AWS_REGION=us-east-1
- * - AWS_ACCESS_KEY_ID=  (from IAM or environment)
- * - AWS_SECRET_ACCESS_KEY=  (from IAM or environment)
+ * - REGION=us-east-1  (Amplify requires non-AWS_ prefix)
+ * - ACCESS_KEY_ID=  (from IAM user)
+ * - SECRET_ACCESS_KEY=  (from IAM user)
+ * - DYNAMODB_TABLE_NAME=Yggdrasil-Production
+ *
+ * Note: Amplify reserves AWS_* variable names, so use REGION, ACCESS_KEY_ID, etc.
  */
 
 // Environment detection
@@ -53,7 +56,7 @@ export const dynamoDBConfig = {
    *
    * Should match your production region for consistency.
    */
-  region: process.env.AWS_REGION || "us-east-1",
+  region: process.env.REGION || process.env.AWS_REGION || "us-east-1",
 
   /**
    * Table Name
@@ -84,11 +87,16 @@ export const dynamoDBConfig = {
         secretAccessKey:
           process.env.AWS_SECRET_ACCESS_KEY || "fakeSecretAccessKey",
       }
-    : // Production uses default credential provider chain:
-      // 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-      // 2. IAM role (preferred for Amplify, EC2, ECS)
-      // 3. AWS credentials file (~/.aws/credentials)
-      undefined,
+    : // Production uses environment variables or credential provider chain:
+    // 1. Environment variables (ACCESS_KEY_ID, SECRET_ACCESS_KEY or AWS_* versions)
+    // 2. IAM role (preferred for Amplify, EC2, ECS)
+    // 3. AWS credentials file (~/.aws/credentials)
+    process.env.ACCESS_KEY_ID && process.env.SECRET_ACCESS_KEY
+    ? {
+        accessKeyId: process.env.ACCESS_KEY_ID,
+        secretAccessKey: process.env.SECRET_ACCESS_KEY,
+      }
+    : undefined,
 };
 
 // S3 Configuration (for profile photos)
@@ -106,7 +114,11 @@ export const s3Config = {
    *
    * Should match DynamoDB region for simplicity
    */
-  region: process.env.S3_REGION || process.env.AWS_REGION || "us-east-1",
+  region:
+    process.env.S3_REGION ||
+    process.env.REGION ||
+    process.env.AWS_REGION ||
+    "us-east-1",
 
   /**
    * Bucket Name
@@ -135,6 +147,7 @@ export const cognitoConfig = {
    */
   region:
     process.env.NEXT_PUBLIC_COGNITO_REGION ||
+    process.env.REGION ||
     process.env.AWS_REGION ||
     "us-east-1",
 
@@ -225,7 +238,7 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
 
   // Check required environment variables
   if (!dynamoDBConfig.region) {
-    errors.push("AWS_REGION is required");
+    errors.push("REGION or AWS_REGION is required");
   }
 
   if (!dynamoDBConfig.tableName) {
