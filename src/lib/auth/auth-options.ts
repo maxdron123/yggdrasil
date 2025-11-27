@@ -15,9 +15,8 @@ import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import CognitoProvider from "next-auth/providers/cognito";
 import bcrypt from "bcryptjs";
-import { GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoDBClient } from "../aws/dynamodb";
+import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { docClient } from "../aws/dynamodb";
 import { authConfig, cognitoConfig, dynamoDBConfig } from "../aws/config";
 
 /**
@@ -83,15 +82,13 @@ export const authOptions: NextAuthConfig = {
 
         try {
           // Look up user by email using GSI1
-          const { QueryCommand } = await import("@aws-sdk/client-dynamodb");
-
-          const result = await dynamoDBClient.send(
+          const result = await docClient.send(
             new QueryCommand({
               TableName: dynamoDBConfig.tableName,
               IndexName: "GSI1",
               KeyConditionExpression: "GSI1PK = :email",
               ExpressionAttributeValues: {
-                ":email": { S: credentials.email.toLowerCase() },
+                ":email": credentials.email.toLowerCase(),
               },
               Limit: 1,
             })
@@ -102,7 +99,7 @@ export const authOptions: NextAuthConfig = {
             return null;
           }
 
-          const user = unmarshall(result.Items[0]) as {
+          const user = result.Items[0] as {
             userId: string;
             email: string;
             name?: string;
@@ -280,12 +277,13 @@ export const authOptions: NextAuthConfig = {
       if (account?.provider === "cognito") {
         try {
           // Check if user exists in DynamoDB
-          const result = await dynamoDBClient.send(
-            new GetItemCommand({
+          const { GetCommand } = await import("@aws-sdk/lib-dynamodb");
+          const result = await docClient.send(
+            new GetCommand({
               TableName: dynamoDBConfig.tableName,
               Key: {
-                PK: { S: `USER#${user.id}` },
-                SK: { S: "PROFILE" },
+                PK: `USER#${user.id}`,
+                SK: "PROFILE",
               },
             })
           );
