@@ -264,6 +264,19 @@ export default function TreeVisualization({
     setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
   };
 
+  // Handle drag-and-drop connections
+  const onConnect = useCallback(
+    (connection: { source: string; target: string }) => {
+      // Show relationship selection modal
+      setPendingConnection({
+        person1Id: connection.source,
+        person2Id: connection.target,
+      });
+      setShowRelationshipModal(true);
+    },
+    []
+  );
+
   if (persons.length === 0) {
     return (
       <div className="w-full h-[600px] flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
@@ -370,12 +383,15 @@ export default function TreeVisualization({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
+          onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           minZoom={0.1}
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          connectionLineType="smoothstep"
+          connectionLineStyle={{ stroke: "#3b82f6", strokeWidth: 2 }}
         >
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <Controls />

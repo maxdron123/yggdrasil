@@ -68,7 +68,7 @@ export async function createRelationship(
   // For relationships, we store TWO records to enable bidirectional queries
   const item1 = {
     PK: `PERSON#${person1Id}`,
-    SK: `${relationshipType}#${person2Id}`,
+    SK: `${relationshipType}#${person2Id}#${relationshipId}`,
     EntityType: "RELATIONSHIP",
 
     // GSI2: For querying relationships by tree
@@ -84,7 +84,7 @@ export async function createRelationship(
     // If Person1 is parent of Person2, then Person2 is child of Person1
     item2 = {
       PK: `PERSON#${person2Id}`,
-      SK: `CHILD#${person1Id}`,
+      SK: `CHILD#${person1Id}#${relationshipId}`,
       EntityType: "RELATIONSHIP",
       GSI2PK: `TREE#${treeId}`,
       GSI2SK: `REL#${relationshipId}`,
@@ -100,7 +100,7 @@ export async function createRelationship(
     // Spouse relationships are symmetric
     item2 = {
       PK: `PERSON#${person2Id}`,
-      SK: `SPOUSE#${person1Id}`,
+      SK: `SPOUSE#${person1Id}#${relationshipId}`,
       EntityType: "RELATIONSHIP",
       GSI2PK: `TREE#${treeId}`,
       GSI2SK: `REL#${relationshipId}`,
@@ -112,7 +112,7 @@ export async function createRelationship(
     // Sibling relationships are symmetric
     item2 = {
       PK: `PERSON#${person2Id}`,
-      SK: `SIBLING#${person1Id}`,
+      SK: `SIBLING#${person1Id}#${relationshipId}`,
       EntityType: "RELATIONSHIP",
       GSI2PK: `TREE#${treeId}`,
       GSI2SK: `REL#${relationshipId}`,
