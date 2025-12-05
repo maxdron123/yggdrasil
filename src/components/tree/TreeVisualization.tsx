@@ -19,6 +19,7 @@ import {
   Edge,
   BackgroundVariant,
   Position,
+  ConnectionLineType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Person } from "@/types/person";
@@ -390,7 +391,7 @@ export default function TreeVisualization({
           minZoom={0.1}
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-          connectionLineType="smoothstep"
+          connectionLineType={ConnectionLineType.SmoothStep}
           connectionLineStyle={{ stroke: "#3b82f6", strokeWidth: 2 }}
         >
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
