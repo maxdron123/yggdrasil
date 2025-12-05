@@ -55,6 +55,8 @@ function PersonNode({ data, selected }: PersonNodeProps) {
       `}
     >
       <Handle type="target" position={Position.Top} className="w-2 h-2" />
+      <Handle type="target" position={Position.Left} className="w-2 h-2" />
+      <Handle type="target" position={Position.Right} className="w-2 h-2" />
 
       <div className="p-3">
         {/* Avatar and Gender */}
@@ -129,6 +131,8 @@ function PersonNode({ data, selected }: PersonNodeProps) {
       </div>
 
       <Handle type="source" position={Position.Bottom} className="w-2 h-2" />
+      <Handle type="source" position={Position.Left} className="w-2 h-2" />
+      <Handle type="source" position={Position.Right} className="w-2 h-2" />
     </div>
   );
 }

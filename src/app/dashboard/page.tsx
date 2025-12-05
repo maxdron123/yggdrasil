@@ -9,14 +9,17 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useTrees } from "@/lib/hooks/useTrees";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
+import { useState } from "react";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const { data: trees, isLoading } = useTrees();
+  const [showAddPersonModal, setShowAddPersonModal] = useState(false);
 
   if (!session) {
     redirect("/auth/signin");
@@ -238,6 +241,7 @@ export default function DashboardPage() {
 
                   <button
                     key="add-person"
+                    onClick={() => setShowAddPersonModal(true)}
                     className="w-full p-4 text-left border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -299,6 +303,68 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Add Person Modal */}
+      <Modal
+        isOpen={showAddPersonModal}
+        onClose={() => setShowAddPersonModal(false)}
+        title="Add Person to Tree"
+      >
+        <div className="space-y-4">
+          {trees && trees.length > 0 ? (
+            <>
+              <p className="text-sm text-gray-600">
+                Select a tree to add a person to:
+              </p>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {trees.map((tree) => (
+                  <Link
+                    key={tree.treeId}
+                    href={`/trees/${tree.treeId}`}
+                    onClick={() => setShowAddPersonModal(false)}
+                  >
+                    <div className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            {tree.treeName}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {tree.personCount || 0} persons
+                          </p>
+                        </div>
+                        <svg
+                          className="w-5 h-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600">
+                You don&apos;t have any trees yet. Create a tree first to add
+                persons.
+              </p>
+              <Link href="/trees" onClick={() => setShowAddPersonModal(false)}>
+                <Button className="w-full">Create New Tree</Button>
+              </Link>
+            </>
+          )}
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }
