@@ -48,12 +48,12 @@ export async function createPerson(
     userId,
     personId,
     treeId,
-    GSI1PK: `TREE#${treeId}`,
-    GSI1SK: `PERSON#${personId}`,
-    GSI2PK: treeId,
-    GSI2SK: now,
-    GSI3PK: userId,
-    GSI3SK: now,
+    GSI1PK: `PERSON#${personId}`,
+    GSI1SK: `TREE#${treeId}`,
+    GSI2PK: `TREE#${treeId}`,
+    GSI2SK: `PERSON#${personId}`,
+    GSI3PK: `USER#${userId}`,
+    GSI3SK: `PERSON#${now}`,
     firstName: validatedInput.firstName,
     lastName: validatedInput.lastName,
     middleName: validatedInput.middleName,
@@ -147,9 +147,11 @@ export async function getTreePersons(
       new QueryCommand({
         TableName: TABLE_NAME,
         IndexName: "GSI2",
-        KeyConditionExpression: "GSI2PK = :treeId",
+        KeyConditionExpression:
+          "GSI2PK = :treePK AND begins_with(GSI2SK, :personPrefix)",
         ExpressionAttributeValues: {
-          ":treeId": treeId,
+          ":treePK": `TREE#${treeId}`,
+          ":personPrefix": "PERSON#",
         },
       })
     );
