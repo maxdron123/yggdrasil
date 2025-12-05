@@ -47,6 +47,16 @@ export default function TreeDetailPage({
   >();
   const [showVisualization, setShowVisualization] = useState(true);
 
+  // List view connection mode
+  const [isListConnecting, setIsListConnecting] = useState(false);
+  const [listFirstPerson, setListFirstPerson] = useState<string | undefined>();
+  const [showListRelationshipModal, setShowListRelationshipModal] =
+    useState(false);
+  const [listPendingConnection, setListPendingConnection] = useState<{
+    person1Id: string;
+    person2Id: string;
+  } | null>(null);
+
   const handleCreatePerson = async (data: PersonFormData) => {
     try {
       // Clean up form data - convert empty strings to undefined
@@ -104,6 +114,43 @@ export default function TreeDetailPage({
     } catch (error) {
       console.error("Failed to create relationship:", error);
     }
+  };
+
+  const handleListRelationshipSelect = async (relationshipType: string) => {
+    if (listPendingConnection) {
+      await handleConnectionCreate(
+        listPendingConnection.person1Id,
+        listPendingConnection.person2Id,
+        relationshipType
+      );
+      setShowListRelationshipModal(false);
+      setListPendingConnection(null);
+      setListFirstPerson(undefined);
+      setIsListConnecting(false);
+    }
+  };
+
+  const handleListPersonClick = (personId: string) => {
+    if (!isListConnecting) return;
+
+    if (!listFirstPerson) {
+      // Select first person
+      setListFirstPerson(personId);
+    } else if (listFirstPerson !== personId) {
+      // Select second person - show relationship modal
+      setListPendingConnection({
+        person1Id: listFirstPerson,
+        person2Id: personId,
+      });
+      setShowListRelationshipModal(true);
+    }
+  };
+
+  const toggleListConnectionMode = () => {
+    setIsListConnecting(!isListConnecting);
+    setListFirstPerson(undefined);
+    setListPendingConnection(null);
+    setShowListRelationshipModal(false);
   };
 
   if (treeLoading) {
@@ -283,21 +330,17 @@ export default function TreeDetailPage({
               </h2>
               {persons && persons.length > 0 && (
                 <button
-                  onClick={() =>
-                    setSelectedPersonId(
-                      selectedPersonId ? undefined : persons[0]?.personId
-                    )
-                  }
+                  onClick={toggleListConnectionMode}
                   className={`
                     px-4 py-2 rounded-lg font-medium transition-all
                     ${
-                      selectedPersonId
+                      isListConnecting
                         ? "bg-blue-600 text-white hover:bg-blue-700"
                         : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
                     }
                   `}
                 >
-                  {selectedPersonId ? (
+                  {isListConnecting ? (
                     <>
                       <svg
                         className="w-5 h-5 inline mr-2"
@@ -336,18 +379,26 @@ export default function TreeDetailPage({
               )}
             </div>
 
-            {selectedPersonId && (
+            {isListConnecting && (
               <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
                 <p className="text-sm">
-                  <strong>Step 1:</strong> Selected{" "}
-                  <strong>
-                    {
-                      persons?.find((p) => p.personId === selectedPersonId)
-                        ?.firstName
-                    }
-                  </strong>
-                  . <strong>Step 2:</strong> Click another person to connect
-                  them.
+                  {listFirstPerson ? (
+                    <>
+                      <strong>Step 2:</strong> Click another person to connect
+                      with{" "}
+                      <strong>
+                        {
+                          persons?.find((p) => p.personId === listFirstPerson)
+                            ?.firstName
+                        }
+                      </strong>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Step 1:</strong> Click a person to start the
+                      connection
+                    </>
+                  )}
                 </p>
               </div>
             )}
@@ -363,24 +414,17 @@ export default function TreeDetailPage({
                     key={person.personId}
                     className={`
                       ${
-                        selectedPersonId === person.personId
+                        listFirstPerson === person.personId
                           ? "ring-4 ring-blue-500 rounded-lg"
                           : ""
                       }
                       ${
-                        selectedPersonId && selectedPersonId !== person.personId
+                        isListConnecting && listFirstPerson !== person.personId
                           ? "cursor-pointer hover:ring-2 hover:ring-blue-300 rounded-lg"
                           : ""
                       }
                     `}
-                    onClick={() => {
-                      if (
-                        selectedPersonId &&
-                        selectedPersonId !== person.personId
-                      ) {
-                        handleAddRelationshipClick(person.personId);
-                      }
-                    }}
+                    onClick={() => handleListPersonClick(person.personId)}
                   >
                     <PersonCard person={person} />
                   </div>
@@ -456,6 +500,117 @@ export default function TreeDetailPage({
           isLoading={createRelationship.isPending}
         />
       </Modal>
+
+      {/* List View Relationship Selection Modal */}
+      {showListRelationshipModal && listPendingConnection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Select Relationship Type
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              How is{" "}
+              <strong>
+                {
+                  persons?.find(
+                    (p) => p.personId === listPendingConnection.person1Id
+                  )?.firstName
+                }
+              </strong>{" "}
+              related to{" "}
+              <strong>
+                {
+                  persons?.find(
+                    (p) => p.personId === listPendingConnection.person2Id
+                  )?.firstName
+                }
+              </strong>
+              ?
+            </p>
+            <div className="space-y-2 mb-6">
+              <button
+                onClick={() => handleListRelationshipSelect("Parent")}
+                className="w-full flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-blue-500 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Parent</div>
+                  <div className="text-xs text-gray-600">
+                    {
+                      persons?.find(
+                        (p) => p.personId === listPendingConnection.person1Id
+                      )?.firstName
+                    }{" "}
+                    is the parent of{" "}
+                    {
+                      persons?.find(
+                        (p) => p.personId === listPendingConnection.person2Id
+                      )?.firstName
+                    }
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleListRelationshipSelect("Child")}
+                className="w-full flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-blue-500 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Child</div>
+                  <div className="text-xs text-gray-600">
+                    {
+                      persons?.find(
+                        (p) => p.personId === listPendingConnection.person1Id
+                      )?.firstName
+                    }{" "}
+                    is the child of{" "}
+                    {
+                      persons?.find(
+                        (p) => p.personId === listPendingConnection.person2Id
+                      )?.firstName
+                    }
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleListRelationshipSelect("Spouse")}
+                className="w-full flex items-center gap-3 p-3 bg-pink-50 hover:bg-pink-100 border border-pink-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-pink-500 border-t-2 border-dashed flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Spouse</div>
+                  <div className="text-xs text-gray-600">
+                    Married or partners
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleListRelationshipSelect("Sibling")}
+                className="w-full flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-green-500 border-t-2 border-dashed flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Sibling</div>
+                  <div className="text-xs text-gray-600">
+                    Brothers or sisters
+                  </div>
+                </div>
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                setShowListRelationshipModal(false);
+                setListPendingConnection(null);
+                setListFirstPerson(undefined);
+                setIsListConnecting(false);
+              }}
+              className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
