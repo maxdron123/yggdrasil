@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PersonForm, PersonFormData } from "@/components/person/PersonForm";
+import { Person } from "@/types/person";
 import { PersonCard } from "@/components/person/PersonCard";
 import {
   RelationshipForm,
@@ -20,7 +21,12 @@ import {
 } from "@/components/relationship/RelationshipForm";
 import TreeVisualization from "@/components/tree/TreeVisualization";
 import { useTree } from "@/lib/hooks/useTrees";
-import { usePersons, useCreatePerson } from "@/lib/hooks/usePersons";
+import {
+  usePersons,
+  useCreatePerson,
+  useUpdatePerson,
+  useDeletePerson,
+} from "@/lib/hooks/usePersons";
 import {
   useTreeRelationships,
   useCreateRelationship,
@@ -38,8 +44,17 @@ export default function TreeDetailPage({
   const { data: relationships } = useTreeRelationships(treeId);
   const createPerson = useCreatePerson(treeId);
   const createRelationship = useCreateRelationship(treeId);
+  const deletePerson = useDeletePerson(treeId);
+
+  // We'll manage update person mutation dynamically
+  const [updatePersonId, setUpdatePersonId] = useState<string | null>(null);
+  const updatePerson = useUpdatePerson(updatePersonId || "", treeId);
 
   const [isAddPersonModalOpen, setIsAddPersonModalOpen] = useState(false);
+  const [isEditPersonModalOpen, setIsEditPersonModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [personToEdit, setPersonToEdit] = useState<Person | null>(null);
+  const [personToDelete, setPersonToDelete] = useState<Person | null>(null);
   const [isAddRelationshipModalOpen, setIsAddRelationshipModalOpen] =
     useState(false);
   const [selectedPersonId, setSelectedPersonId] = useState<
@@ -151,6 +166,49 @@ export default function TreeDetailPage({
     setListFirstPerson(undefined);
     setListPendingConnection(null);
     setShowListRelationshipModal(false);
+  };
+
+  const handleEditPerson = (person: Person) => {
+    setPersonToEdit(person);
+    setUpdatePersonId(person.personId);
+    setIsEditPersonModalOpen(true);
+  };
+
+  const handleUpdatePerson = async (data: PersonFormData) => {
+    if (!personToEdit || !updatePersonId) return;
+
+    try {
+      const cleanedData = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          value === "" ? undefined : value,
+        ])
+      ) as PersonFormData;
+
+      await updatePerson.mutateAsync(cleanedData);
+      setIsEditPersonModalOpen(false);
+      setPersonToEdit(null);
+      setUpdatePersonId(null);
+    } catch (error) {
+      console.error("Failed to update person:", error);
+    }
+  };
+
+  const handleDeletePerson = (person: Person) => {
+    setPersonToDelete(person);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeletePerson = async () => {
+    if (!personToDelete) return;
+
+    try {
+      await deletePerson.mutateAsync(personToDelete.personId);
+      setIsDeleteConfirmOpen(false);
+      setPersonToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete person:", error);
+    }
   };
 
   if (treeLoading) {
@@ -426,7 +484,12 @@ export default function TreeDetailPage({
                     `}
                     onClick={() => handleListPersonClick(person.personId)}
                   >
-                    <PersonCard person={person} />
+                    <PersonCard
+                      person={person}
+                      showActions={!isListConnecting}
+                      onEdit={handleEditPerson}
+                      onDelete={handleDeletePerson}
+                    />
                   </div>
                 ))}
               </div>
@@ -608,6 +671,87 @@ export default function TreeDetailPage({
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Person Modal */}
+      <Modal
+        isOpen={isEditPersonModalOpen}
+        onClose={() => {
+          setIsEditPersonModalOpen(false);
+          setPersonToEdit(null);
+        }}
+        title="Edit Family Member"
+        size="lg"
+      >
+        {personToEdit && (
+          <PersonForm
+            initialData={personToEdit}
+            onSubmit={handleUpdatePerson}
+            onCancel={() => {
+              setIsEditPersonModalOpen(false);
+              setPersonToEdit(null);
+            }}
+            isLoading={false}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && personToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Delete Person
+                </h3>
+                <p className="text-sm text-gray-600">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700 mb-6">
+              Are you sure you want to delete{" "}
+              <strong>
+                {personToDelete.firstName} {personToDelete.lastName}
+              </strong>
+              ? All relationships involving this person will be removed, but
+              other family members will remain intact.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setPersonToDelete(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeletePerson}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+              >
+                Delete Person
+              </button>
+            </div>
           </div>
         </div>
       )}
