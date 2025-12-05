@@ -51,6 +51,16 @@ export async function createRelationship(
     throw new Error("Cannot create relationship with self");
   }
 
+  // Check if a relationship already exists between these two people (in either direction)
+  const existingRelationships = await getPersonRelationships(person1Id);
+  const hasExistingRelationship = existingRelationships.some(
+    (rel) => rel.Person2Id === person2Id || rel.Person1Id === person2Id
+  );
+
+  if (hasExistingRelationship) {
+    throw new Error("A relationship already exists between these two people");
+  }
+
   const relationshipId = `rel-${uuidv4()}`;
   const now = new Date().toISOString();
 

@@ -73,6 +73,9 @@ export default function TreeDetailPage({
     person1Id: string;
     person2Id: string;
   } | null>(null);
+  const [relationshipError, setRelationshipError] = useState<string | null>(
+    null
+  );
 
   const handleCreatePerson = async (data: PersonFormData) => {
     try {
@@ -96,14 +99,25 @@ export default function TreeDetailPage({
 
   const handleCreateRelationship = async (data: RelationshipFormData) => {
     try {
+      setRelationshipError(null);
       await createRelationship.mutateAsync({
         ...data,
         treeId,
       });
       setIsAddRelationshipModalOpen(false);
       setSelectedPersonId(undefined);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create relationship:", error);
+      const errorMessage = error?.message || "Failed to create relationship";
+      if (errorMessage.includes("already exists")) {
+        setRelationshipError(
+          "These two people already have a relationship. Each pair can only have one connection."
+        );
+      } else {
+        setRelationshipError(errorMessage);
+      }
+      // Auto-clear error after 5 seconds
+      setTimeout(() => setRelationshipError(null), 5000);
     }
   };
 
@@ -118,6 +132,7 @@ export default function TreeDetailPage({
     relationshipType: string
   ) => {
     try {
+      setRelationshipError(null);
       await createRelationship.mutateAsync({
         person1Id,
         person2Id,
@@ -128,8 +143,18 @@ export default function TreeDetailPage({
           | "Sibling",
         treeId,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create relationship:", error);
+      const errorMessage = error?.message || "Failed to create relationship";
+      if (errorMessage.includes("already exists")) {
+        setRelationshipError(
+          "These two people already have a relationship. Each pair can only have one connection."
+        );
+      } else {
+        setRelationshipError(errorMessage);
+      }
+      // Auto-clear error after 5 seconds
+      setTimeout(() => setRelationshipError(null), 5000);
     }
   };
 
@@ -361,6 +386,51 @@ export default function TreeDetailPage({
             </Button>
           </div>
         </div>
+
+        {/* Error Toast */}
+        {relationshipError && (
+          <div className="fixed top-4 right-4 z-50 max-w-md bg-red-50 border-2 border-red-200 rounded-lg shadow-lg p-4 animate-slide-in">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900 mb-1">
+                  Cannot Create Relationship
+                </h3>
+                <p className="text-sm text-red-800">{relationshipError}</p>
+              </div>
+              <button
+                onClick={() => setRelationshipError(null)}
+                className="text-red-600 hover:text-red-800"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* View Toggle */}
         <div className="flex gap-2 border-b border-gray-200">
