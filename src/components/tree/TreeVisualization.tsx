@@ -35,6 +35,12 @@ interface TreeVisualizationProps {
     person2Id: string,
     relationshipType: string
   ) => void;
+  onRelationshipDelete?: (
+    relationshipId: string,
+    person1Id: string,
+    person2Id: string,
+    relationshipType: string
+  ) => void;
 }
 
 const nodeTypes = {
@@ -175,6 +181,7 @@ export default function TreeVisualization({
   relationships,
   onPersonClick,
   onConnectionCreate,
+  onRelationshipDelete,
 }: TreeVisualizationProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => calculateTreeLayout(persons, relationships),
@@ -186,6 +193,8 @@ export default function TreeVisualization({
 
   // Connection mode state
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [showRelationsMenu, setShowRelationsMenu] = useState(false);
   const [firstSelectedPerson, setFirstSelectedPerson] = useState<string | null>(
     null
   );
@@ -193,6 +202,13 @@ export default function TreeVisualization({
   const [pendingConnection, setPendingConnection] = useState<{
     person1Id: string;
     person2Id: string;
+  } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{
+    relationshipId: string;
+    person1Id: string;
+    person2Id: string;
+    relationshipType: string;
   } | null>(null);
 
   // Update nodes when persons change
@@ -259,8 +275,25 @@ export default function TreeVisualization({
     setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
   };
 
-  const toggleConnectionMode = () => {
-    setIsConnecting(!isConnecting);
+  const handleAddRelation = () => {
+    setIsConnecting(true);
+    setIsRemoving(false);
+    setShowRelationsMenu(false);
+    setFirstSelectedPerson(null);
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+  };
+
+  const handleRemoveRelation = () => {
+    setIsRemoving(true);
+    setIsConnecting(false);
+    setShowRelationsMenu(false);
+    setFirstSelectedPerson(null);
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+  };
+
+  const handleCancelMode = () => {
+    setIsConnecting(false);
+    setIsRemoving(false);
     setFirstSelectedPerson(null);
     setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
   };
@@ -277,6 +310,50 @@ export default function TreeVisualization({
     },
     []
   );
+
+  // Handle edge click for deletion
+  const onEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      if (isRemoving && onRelationshipDelete) {
+        // Extract relationship data from edge
+        const relationship = relationships.find(
+          (r) =>
+            (r.Person1Id === edge.source && r.Person2Id === edge.target) ||
+            (r.Person1Id === edge.target && r.Person2Id === edge.source)
+        );
+
+        if (relationship) {
+          setPendingDelete({
+            relationshipId: relationship.RelationshipId,
+            person1Id: relationship.Person1Id,
+            person2Id: relationship.Person2Id,
+            relationshipType: relationship.RelationshipType,
+          });
+          setShowDeleteConfirm(true);
+        }
+      }
+    },
+    [isRemoving, relationships, onRelationshipDelete]
+  );
+
+  const handleConfirmDelete = () => {
+    if (pendingDelete && onRelationshipDelete) {
+      onRelationshipDelete(
+        pendingDelete.relationshipId,
+        pendingDelete.person1Id,
+        pendingDelete.person2Id,
+        pendingDelete.relationshipType
+      );
+      setShowDeleteConfirm(false);
+      setPendingDelete(null);
+      setIsRemoving(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setPendingDelete(null);
+  };
 
   if (persons.length === 0) {
     return (
@@ -305,40 +382,36 @@ export default function TreeVisualization({
 
   return (
     <div className="relative w-full h-[600px]">
-      {/* Connection Mode Toggle */}
+      {/* Relations Menu */}
       <div className="absolute top-4 right-4 z-10">
-        <button
-          onClick={toggleConnectionMode}
-          className={`
-            px-4 py-2 rounded-lg font-medium shadow-lg transition-all
-            ${
-              isConnecting
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
-            }
-          `}
-        >
-          {isConnecting ? (
-            <>
+        {isConnecting || isRemoving ? (
+          <button
+            onClick={handleCancelMode}
+            className="px-4 py-2 rounded-lg font-medium shadow-lg transition-all bg-red-600 text-white hover:bg-red-700"
+          >
+            <svg
+              className="w-5 h-5 inline mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            Cancel
+          </button>
+        ) : (
+          <div className="relative">
+            <button
+              onClick={() => setShowRelationsMenu(!showRelationsMenu)}
+              className="px-4 py-2 rounded-lg font-medium shadow-lg transition-all bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 flex items-center gap-2"
+            >
               <svg
-                className="w-5 h-5 inline mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-              Cancel Connecting
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-5 h-5 inline mr-2"
+                className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -350,13 +423,70 @@ export default function TreeVisualization({
                   d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                 />
               </svg>
-              Connect People
-            </>
-          )}
-        </button>
+              Relations
+              <svg
+                className={`w-4 h-4 transition-transform ${
+                  showRelationsMenu ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {showRelationsMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1">
+                <button
+                  onClick={handleAddRelation}
+                  className="w-full px-4 py-2 text-left hover:bg-blue-50 flex items-center gap-2 text-gray-700"
+                >
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Add Relation
+                </button>
+                <button
+                  onClick={handleRemoveRelation}
+                  className="w-full px-4 py-2 text-left hover:bg-red-50 flex items-center gap-2 text-gray-700"
+                >
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  Remove Relation
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Status message when connecting */}
+      {/* Status message when connecting or removing */}
       {isConnecting && (
         <div className="absolute top-20 right-4 z-10 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg shadow-lg max-w-xs">
           {firstSelectedPerson ? (
@@ -376,6 +506,13 @@ export default function TreeVisualization({
           )}
         </div>
       )}
+      {isRemoving && (
+        <div className="absolute top-20 right-4 z-10 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg shadow-lg max-w-xs">
+          <p className="text-sm">
+            <strong>Click on a relationship line</strong> to delete it
+          </p>
+        </div>
+      )}
 
       <div className="w-full h-full bg-gray-50 rounded-lg border border-gray-200">
         <ReactFlow
@@ -385,6 +522,7 @@ export default function TreeVisualization({
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           onConnect={onConnect}
+          onEdgeClick={onEdgeClick}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.2 }}
@@ -532,6 +670,50 @@ export default function TreeVisualization({
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && pendingDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Delete Relationship?
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete the{" "}
+              <strong>{pendingDelete.relationshipType}</strong> relationship
+              between{" "}
+              <strong>
+                {
+                  persons.find((p) => p.personId === pendingDelete.person1Id)
+                    ?.firstName
+                }
+              </strong>{" "}
+              and{" "}
+              <strong>
+                {
+                  persons.find((p) => p.personId === pendingDelete.person2Id)
+                    ?.firstName
+                }
+              </strong>
+              ?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+              >
+                Delete
+              </button>
+              <button
+                onClick={handleCancelDelete}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

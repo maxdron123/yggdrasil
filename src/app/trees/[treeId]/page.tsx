@@ -30,6 +30,7 @@ import {
 import {
   useTreeRelationships,
   useCreateRelationship,
+  useDeleteRelationship,
 } from "@/lib/hooks/useRelationships";
 import Link from "next/link";
 
@@ -44,6 +45,7 @@ export default function TreeDetailPage({
   const { data: relationships } = useTreeRelationships(treeId);
   const createPerson = useCreatePerson(treeId);
   const createRelationship = useCreateRelationship(treeId);
+  const deleteRelationship = useDeleteRelationship(treeId);
   const deletePerson = useDeletePerson(treeId);
 
   // We'll manage update person mutation dynamically
@@ -128,6 +130,28 @@ export default function TreeDetailPage({
       });
     } catch (error) {
       console.error("Failed to create relationship:", error);
+    }
+  };
+
+  const handleRelationshipDelete = async (
+    relationshipId: string,
+    person1Id: string,
+    person2Id: string,
+    relationshipType: string
+  ) => {
+    try {
+      await deleteRelationship.mutateAsync({
+        relationshipId,
+        person1Id,
+        person2Id,
+        relationshipType: relationshipType as
+          | "Parent"
+          | "Child"
+          | "Spouse"
+          | "Sibling",
+      });
+    } catch (error) {
+      console.error("Failed to delete relationship:", error);
     }
   };
 
@@ -375,6 +399,7 @@ export default function TreeDetailPage({
               persons={persons || []}
               relationships={relationships || []}
               onConnectionCreate={handleConnectionCreate}
+              onRelationshipDelete={handleRelationshipDelete}
             />
           </div>
         )}
