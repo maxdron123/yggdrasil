@@ -85,6 +85,27 @@ export default function TreeDetailPage({
     setIsAddRelationshipModalOpen(true);
   };
 
+  const handleConnectionCreate = async (
+    person1Id: string,
+    person2Id: string,
+    relationshipType: string
+  ) => {
+    try {
+      await createRelationship.mutateAsync({
+        person1Id,
+        person2Id,
+        relationshipType: relationshipType as
+          | "Parent"
+          | "Child"
+          | "Spouse"
+          | "Sibling",
+        treeId,
+      });
+    } catch (error) {
+      console.error("Failed to create relationship:", error);
+    }
+  };
+
   if (treeLoading) {
     return (
       <DashboardLayout>
@@ -248,6 +269,7 @@ export default function TreeDetailPage({
             <TreeVisualization
               persons={persons || []}
               relationships={relationships || []}
+              onConnectionCreate={handleConnectionCreate}
             />
           </div>
         )}
@@ -255,9 +277,80 @@ export default function TreeDetailPage({
         {/* Persons List */}
         {!showVisualization && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Family Members
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Family Members
+              </h2>
+              {persons && persons.length > 0 && (
+                <button
+                  onClick={() =>
+                    setSelectedPersonId(
+                      selectedPersonId ? undefined : persons[0]?.personId
+                    )
+                  }
+                  className={`
+                    px-4 py-2 rounded-lg font-medium transition-all
+                    ${
+                      selectedPersonId
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+                    }
+                  `}
+                >
+                  {selectedPersonId ? (
+                    <>
+                      <svg
+                        className="w-5 h-5 inline mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Cancel Connecting
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-5 h-5 inline mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                        />
+                      </svg>
+                      Connect People
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {selectedPersonId && (
+              <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
+                <p className="text-sm">
+                  <strong>Step 1:</strong> Selected{" "}
+                  <strong>
+                    {
+                      persons?.find((p) => p.personId === selectedPersonId)
+                        ?.firstName
+                    }
+                  </strong>
+                  . <strong>Step 2:</strong> Click another person to connect
+                  them.
+                </p>
+              </div>
+            )}
 
             {personsLoading ? (
               <div className="text-center py-8">
@@ -266,7 +359,31 @@ export default function TreeDetailPage({
             ) : persons && persons.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {persons.map((person) => (
-                  <PersonCard key={person.personId} person={person} />
+                  <div
+                    key={person.personId}
+                    className={`
+                      ${
+                        selectedPersonId === person.personId
+                          ? "ring-4 ring-blue-500 rounded-lg"
+                          : ""
+                      }
+                      ${
+                        selectedPersonId && selectedPersonId !== person.personId
+                          ? "cursor-pointer hover:ring-2 hover:ring-blue-300 rounded-lg"
+                          : ""
+                      }
+                    `}
+                    onClick={() => {
+                      if (
+                        selectedPersonId &&
+                        selectedPersonId !== person.personId
+                      ) {
+                        handleAddRelationshipClick(person.personId);
+                      }
+                    }}
+                  >
+                    <PersonCard person={person} />
+                  </div>
                 ))}
               </div>
             ) : (

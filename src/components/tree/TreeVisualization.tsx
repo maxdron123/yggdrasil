@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -29,6 +29,11 @@ interface TreeVisualizationProps {
   persons: Person[];
   relationships: SimpleRelationship[];
   onPersonClick?: (personId: string) => void;
+  onConnectionCreate?: (
+    person1Id: string,
+    person2Id: string,
+    relationshipType: string
+  ) => void;
 }
 
 const nodeTypes = {
@@ -168,6 +173,7 @@ export default function TreeVisualization({
   persons,
   relationships,
   onPersonClick,
+  onConnectionCreate,
 }: TreeVisualizationProps) {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
     () => calculateTreeLayout(persons, relationships),
@@ -176,6 +182,17 @@ export default function TreeVisualization({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Connection mode state
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [firstSelectedPerson, setFirstSelectedPerson] = useState<string | null>(
+    null
+  );
+  const [showRelationshipModal, setShowRelationshipModal] = useState(false);
+  const [pendingConnection, setPendingConnection] = useState<{
+    person1Id: string;
+    person2Id: string;
+  } | null>(null);
 
   // Update nodes when persons change
   useEffect(() => {
@@ -189,12 +206,63 @@ export default function TreeVisualization({
 
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      if (onPersonClick) {
-        onPersonClick(node.id);
+      if (isConnecting) {
+        // Connection mode
+        if (!firstSelectedPerson) {
+          // Select first person
+          setFirstSelectedPerson(node.id);
+          setNodes((nds) =>
+            nds.map((n) => ({
+              ...n,
+              selected: n.id === node.id,
+            }))
+          );
+        } else if (firstSelectedPerson !== node.id) {
+          // Select second person - show relationship modal
+          setPendingConnection({
+            person1Id: firstSelectedPerson,
+            person2Id: node.id,
+          });
+          setShowRelationshipModal(true);
+        }
+      } else {
+        // Normal mode
+        if (onPersonClick) {
+          onPersonClick(node.id);
+        }
       }
     },
-    [onPersonClick]
+    [isConnecting, firstSelectedPerson, onPersonClick, setNodes]
   );
+
+  const handleRelationshipSelect = (relationshipType: string) => {
+    if (pendingConnection && onConnectionCreate) {
+      onConnectionCreate(
+        pendingConnection.person1Id,
+        pendingConnection.person2Id,
+        relationshipType
+      );
+      setShowRelationshipModal(false);
+      setPendingConnection(null);
+      setFirstSelectedPerson(null);
+      setIsConnecting(false);
+      setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+    }
+  };
+
+  const handleCancelConnection = () => {
+    setShowRelationshipModal(false);
+    setPendingConnection(null);
+    setFirstSelectedPerson(null);
+    setIsConnecting(false);
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+  };
+
+  const toggleConnectionMode = () => {
+    setIsConnecting(!isConnecting);
+    setFirstSelectedPerson(null);
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+  };
 
   if (persons.length === 0) {
     return (
@@ -222,54 +290,234 @@ export default function TreeVisualization({
   }
 
   return (
-    <div className="w-full h-[600px] bg-gray-50 rounded-lg border border-gray-200">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.1}
-        maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <Controls />
-        <MiniMap
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-          className="bg-white border border-gray-200"
-        />
-      </ReactFlow>
+    <div className="relative w-full h-[600px]">
+      {/* Connection Mode Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={toggleConnectionMode}
+          className={`
+            px-4 py-2 rounded-lg font-medium shadow-lg transition-all
+            ${
+              isConnecting
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
+            }
+          `}
+        >
+          {isConnecting ? (
+            <>
+              <svg
+                className="w-5 h-5 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Cancel Connecting
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                />
+              </svg>
+              Connect People
+            </>
+          )}
+        </button>
+      </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 text-xs">
-        <div className="font-semibold text-gray-900 mb-2">Relationships</div>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-0.5 bg-blue-500" />
-            <span className="text-gray-700">Parent-Child</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-0.5 bg-pink-500"
-              style={{ borderTop: "2px dashed" }}
-            />
-            <span className="text-gray-700">Spouse</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-0.5 bg-green-500"
-              style={{ borderTop: "2px dashed" }}
-            />
-            <span className="text-gray-700">Sibling</span>
+      {/* Status message when connecting */}
+      {isConnecting && (
+        <div className="absolute top-20 right-4 z-10 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg shadow-lg max-w-xs">
+          {firstSelectedPerson ? (
+            <p className="text-sm">
+              <strong>Step 2:</strong> Click another person to connect with{" "}
+              <strong>
+                {
+                  persons.find((p) => p.personId === firstSelectedPerson)
+                    ?.firstName
+                }
+              </strong>
+            </p>
+          ) : (
+            <p className="text-sm">
+              <strong>Step 1:</strong> Click a person to start the connection
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="w-full h-full bg-gray-50 rounded-lg border border-gray-200">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.1}
+          maxZoom={2}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          <Controls />
+          <MiniMap
+            nodeStrokeWidth={3}
+            zoomable
+            pannable
+            className="bg-white border border-gray-200"
+          />
+        </ReactFlow>
+
+        {/* Legend */}
+        <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg border border-gray-200 text-xs">
+          <div className="font-semibold text-gray-900 mb-2">Relationships</div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-blue-500" />
+              <span className="text-gray-700">Parent-Child</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-0.5 bg-pink-500"
+                style={{ borderTop: "2px dashed" }}
+              />
+              <span className="text-gray-700">Spouse</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-0.5 bg-green-500"
+                style={{ borderTop: "2px dashed" }}
+              />
+              <span className="text-gray-700">Sibling</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Relationship Type Selection Modal */}
+      {showRelationshipModal && pendingConnection && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Select Relationship Type
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              How is{" "}
+              <strong>
+                {
+                  persons.find(
+                    (p) => p.personId === pendingConnection.person1Id
+                  )?.firstName
+                }
+              </strong>{" "}
+              related to{" "}
+              <strong>
+                {
+                  persons.find(
+                    (p) => p.personId === pendingConnection.person2Id
+                  )?.firstName
+                }
+              </strong>
+              ?
+            </p>
+            <div className="space-y-2 mb-6">
+              <button
+                onClick={() => handleRelationshipSelect("Parent")}
+                className="w-full flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-blue-500 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Parent</div>
+                  <div className="text-xs text-gray-600">
+                    {
+                      persons.find(
+                        (p) => p.personId === pendingConnection.person1Id
+                      )?.firstName
+                    }{" "}
+                    is the parent of{" "}
+                    {
+                      persons.find(
+                        (p) => p.personId === pendingConnection.person2Id
+                      )?.firstName
+                    }
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleRelationshipSelect("Child")}
+                className="w-full flex items-center gap-3 p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-blue-500 flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Child</div>
+                  <div className="text-xs text-gray-600">
+                    {
+                      persons.find(
+                        (p) => p.personId === pendingConnection.person1Id
+                      )?.firstName
+                    }{" "}
+                    is the child of{" "}
+                    {
+                      persons.find(
+                        (p) => p.personId === pendingConnection.person2Id
+                      )?.firstName
+                    }
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleRelationshipSelect("Spouse")}
+                className="w-full flex items-center gap-3 p-3 bg-pink-50 hover:bg-pink-100 border border-pink-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-pink-500 border-t-2 border-dashed flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Spouse</div>
+                  <div className="text-xs text-gray-600">
+                    Married or partners
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleRelationshipSelect("Sibling")}
+                className="w-full flex items-center gap-3 p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors text-left"
+              >
+                <div className="w-8 h-0.5 bg-green-500 border-t-2 border-dashed flex-shrink-0" />
+                <div>
+                  <div className="font-medium text-gray-900">Sibling</div>
+                  <div className="text-xs text-gray-600">
+                    Brothers or sisters
+                  </div>
+                </div>
+              </button>
+            </div>
+            <button
+              onClick={handleCancelConnection}
+              className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
