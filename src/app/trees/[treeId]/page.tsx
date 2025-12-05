@@ -76,6 +76,8 @@ export default function TreeDetailPage({
   const [relationshipError, setRelationshipError] = useState<string | null>(
     null
   );
+  const [isDeleteRelationshipModalOpen, setIsDeleteRelationshipModalOpen] =
+    useState(false);
 
   const handleCreatePerson = async (data: PersonFormData) => {
     try {
@@ -129,7 +131,9 @@ export default function TreeDetailPage({
   const handleConnectionCreate = async (
     person1Id: string,
     person2Id: string,
-    relationshipType: string
+    relationshipType: string,
+    sourceHandle?: string | null,
+    targetHandle?: string | null
   ) => {
     try {
       setRelationshipError(null);
@@ -142,6 +146,8 @@ export default function TreeDetailPage({
           | "Spouse"
           | "Sibling",
         treeId,
+        sourceHandle,
+        targetHandle,
       });
     } catch (error: any) {
       console.error("Failed to create relationship:", error);
@@ -175,8 +181,12 @@ export default function TreeDetailPage({
           | "Spouse"
           | "Sibling",
       });
+      // Success - relationship deleted
+      console.log("Relationship deleted successfully");
     } catch (error) {
       console.error("Failed to delete relationship:", error);
+      setRelationshipError("Failed to delete relationship");
+      setTimeout(() => setRelationshipError(null), 5000);
     }
   };
 
@@ -383,6 +393,25 @@ export default function TreeDetailPage({
                 />
               </svg>
               Add Relationship
+            </Button>
+            <Button
+              onClick={() => setIsDeleteRelationshipModalOpen(true)}
+              variant="secondary"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete Relationship
             </Button>
           </div>
         </div>
@@ -791,6 +820,76 @@ export default function TreeDetailPage({
             isLoading={false}
           />
         )}
+      </Modal>
+
+      {/* Delete Relationship Modal */}
+      <Modal
+        isOpen={isDeleteRelationshipModalOpen}
+        onClose={() => setIsDeleteRelationshipModalOpen(false)}
+        title="Delete Relationship"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Select a relationship to delete:
+          </p>
+          {relationships && relationships.length > 0 ? (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {relationships.map((rel) => {
+                const person1 = persons?.find(
+                  (p) => p.personId === rel.Person1Id
+                );
+                const person2 = persons?.find(
+                  (p) => p.personId === rel.Person2Id
+                );
+                return (
+                  <button
+                    key={rel.RelationshipId}
+                    onClick={() => {
+                      handleRelationshipDelete(
+                        rel.RelationshipId,
+                        rel.Person1Id,
+                        rel.Person2Id,
+                        rel.RelationshipType
+                      );
+                      setIsDeleteRelationshipModalOpen(false);
+                    }}
+                    className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {person1?.firstName} {person1?.lastName} →{" "}
+                          {person2?.firstName} {person2?.lastName}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {rel.RelationshipType}
+                        </p>
+                      </div>
+                      <svg
+                        className="w-5 h-5 text-red-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-8">
+              No relationships to delete
+            </p>
+          )}
+        </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}

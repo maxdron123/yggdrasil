@@ -28,7 +28,14 @@ export async function createRelationship(
   // Validate input
   const validatedInput = relationshipCreateSchema.parse(input);
 
-  const { person1Id, person2Id, relationshipType, treeId } = validatedInput;
+  const {
+    person1Id,
+    person2Id,
+    relationshipType,
+    treeId,
+    sourceHandle,
+    targetHandle,
+  } = validatedInput;
 
   // Verify both persons exist and belong to the same tree
   const person1 = await getPerson(person1Id, userId);
@@ -72,6 +79,8 @@ export async function createRelationship(
     TreeId: treeId,
     UserId: userId,
     CreatedAt: now,
+    ...(sourceHandle && { sourceHandle }),
+    ...(targetHandle && { targetHandle }),
   };
 
   // Store in DynamoDB

@@ -363,6 +363,8 @@ export interface SimpleRelationship {
   TreeId: string;
   UserId: string;
   CreatedAt: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
 }
 
 export interface RelationshipCreateInput {
@@ -370,6 +372,8 @@ export interface RelationshipCreateInput {
   person2Id: string;
   relationshipType: RelationshipType;
   treeId: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
 }
 
 export const relationshipCreateSchema = z.object({
@@ -377,4 +381,6 @@ export const relationshipCreateSchema = z.object({
   person2Id: z.string().min(1),
   relationshipType: z.enum(["Parent", "Child", "Spouse", "Sibling"]),
   treeId: z.string().min(1),
+  sourceHandle: z.string().nullable().optional(),
+  targetHandle: z.string().nullable().optional(),
 });

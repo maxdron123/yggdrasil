@@ -33,7 +33,9 @@ interface TreeVisualizationProps {
   onConnectionCreate?: (
     person1Id: string,
     person2Id: string,
-    relationshipType: string
+    relationshipType: string,
+    sourceHandle?: string | null,
+    targetHandle?: string | null
   ) => void;
   onRelationshipDelete?: (
     relationshipId: string,
@@ -143,31 +145,38 @@ function calculateTreeLayout(
   relationships.forEach((rel) => {
     const edgeId = `${rel.Person1Id}-${rel.Person2Id}`;
 
+    // Base edge config
+    const baseEdge: any = {
+      id: edgeId,
+      source: rel.Person1Id,
+      target: rel.Person2Id,
+      animated: false,
+    };
+
+    // Add handle positions if available (from drag connections)
+    if ((rel as any).sourceHandle) {
+      baseEdge.sourceHandle = (rel as any).sourceHandle;
+    }
+    if ((rel as any).targetHandle) {
+      baseEdge.targetHandle = (rel as any).targetHandle;
+    }
+
     if (rel.RelationshipType === "Parent") {
       edges.push({
-        id: edgeId,
-        source: rel.Person1Id,
-        target: rel.Person2Id,
+        ...baseEdge,
         type: "smoothstep",
-        animated: false,
         style: { stroke: "#3b82f6", strokeWidth: 2 },
       });
     } else if (rel.RelationshipType === "Spouse") {
       edges.push({
-        id: edgeId,
-        source: rel.Person1Id,
-        target: rel.Person2Id,
+        ...baseEdge,
         type: "straight",
-        animated: false,
         style: { stroke: "#ec4899", strokeWidth: 2, strokeDasharray: "5,5" },
       });
     } else if (rel.RelationshipType === "Sibling") {
       edges.push({
-        id: edgeId,
-        source: rel.Person1Id,
-        target: rel.Person2Id,
+        ...baseEdge,
         type: "straight",
-        animated: false,
         style: { stroke: "#10b981", strokeWidth: 2, strokeDasharray: "3,3" },
       });
     }
@@ -202,6 +211,8 @@ export default function TreeVisualization({
   const [pendingConnection, setPendingConnection] = useState<{
     person1Id: string;
     person2Id: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
   } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
@@ -257,7 +268,9 @@ export default function TreeVisualization({
       onConnectionCreate(
         pendingConnection.person1Id,
         pendingConnection.person2Id,
-        relationshipType
+        relationshipType,
+        pendingConnection.sourceHandle,
+        pendingConnection.targetHandle
       );
       setShowRelationshipModal(false);
       setPendingConnection(null);
@@ -299,17 +312,16 @@ export default function TreeVisualization({
   };
 
   // Handle drag-and-drop connections
-  const onConnect = useCallback(
-    (connection: { source: string; target: string }) => {
-      // Show relationship selection modal
-      setPendingConnection({
-        person1Id: connection.source,
-        person2Id: connection.target,
-      });
-      setShowRelationshipModal(true);
-    },
-    []
-  );
+  const onConnect = useCallback((connection: any) => {
+    // Show relationship selection modal with handle information
+    setPendingConnection({
+      person1Id: connection.source,
+      person2Id: connection.target,
+      sourceHandle: connection.sourceHandle,
+      targetHandle: connection.targetHandle,
+    });
+    setShowRelationshipModal(true);
+  }, []);
 
   // Handle edge click for deletion
   const onEdgeClick = useCallback(
