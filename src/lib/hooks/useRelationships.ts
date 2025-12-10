@@ -114,11 +114,15 @@ export function useDeleteRelationship(treeId: string) {
 
   return useMutation({
     mutationFn: deleteRelationshipApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      // Invalidate and refetch immediately
+      await queryClient.invalidateQueries({
         queryKey: ["relationships", "tree", treeId],
       });
-      queryClient.invalidateQueries({ queryKey: ["persons", treeId] });
+      await queryClient.refetchQueries({
+        queryKey: ["relationships", "tree", treeId],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["persons", treeId] });
     },
   });
 }

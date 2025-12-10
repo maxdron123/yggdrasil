@@ -154,11 +154,11 @@ function calculateTreeLayout(
     };
 
     // Add handle positions if available (from drag connections)
-    if ((rel as any).sourceHandle) {
-      baseEdge.sourceHandle = (rel as any).sourceHandle;
+    if (rel.sourceHandle) {
+      baseEdge.sourceHandle = rel.sourceHandle;
     }
-    if ((rel as any).targetHandle) {
-      baseEdge.targetHandle = (rel as any).targetHandle;
+    if (rel.targetHandle) {
+      baseEdge.targetHandle = rel.targetHandle;
     }
 
     if (rel.RelationshipType === "Parent") {

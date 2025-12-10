@@ -461,5 +461,7 @@ function itemToRelationship(item: Record<string, unknown>): Relationship {
     TreeId: item.TreeId as string,
     UserId: item.UserId as string,
     CreatedAt: item.CreatedAt as string,
+    sourceHandle: item.sourceHandle as string | null | undefined,
+    targetHandle: item.targetHandle as string | null | undefined,
   };
 }

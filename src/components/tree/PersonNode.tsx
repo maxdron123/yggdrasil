@@ -54,9 +54,24 @@ function PersonNode({ data, selected }: PersonNodeProps) {
         hover:shadow-lg hover:border-blue-300
       `}
     >
-      <Handle type="target" position={Position.Top} className="w-2 h-2" />
-      <Handle type="target" position={Position.Left} className="w-2 h-2" />
-      <Handle type="target" position={Position.Right} className="w-2 h-2" />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        className="w-2 h-2"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        className="w-2 h-2"
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
+        className="w-2 h-2"
+      />
 
       <div className="p-3">
         {/* Avatar and Gender */}
@@ -130,9 +145,24 @@ function PersonNode({ data, selected }: PersonNodeProps) {
         )}
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2" />
-      <Handle type="source" position={Position.Left} className="w-2 h-2" />
-      <Handle type="source" position={Position.Right} className="w-2 h-2" />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className="w-2 h-2"
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        className="w-2 h-2"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="w-2 h-2"
+      />
     </div>
   );
 }
