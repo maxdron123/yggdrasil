@@ -78,6 +78,7 @@ export default function TreeDetailPage({
   );
   const [isDeleteRelationshipModalOpen, setIsDeleteRelationshipModalOpen] =
     useState(false);
+  const [isDeletingRelationship, setIsDeletingRelationship] = useState(false);
 
   const handleCreatePerson = async (data: PersonFormData) => {
     try {
@@ -170,6 +171,7 @@ export default function TreeDetailPage({
     person2Id: string,
     relationshipType: string
   ) => {
+    setIsDeletingRelationship(true);
     try {
       await deleteRelationship.mutateAsync({
         relationshipId,
@@ -183,6 +185,13 @@ export default function TreeDetailPage({
       });
       // Success - relationship deleted
       console.log("Relationship deleted successfully");
+      setIsDeleteRelationshipModalOpen(false);
+    } catch (error) {
+      console.error("Failed to delete relationship:", error);
+      alert("Failed to delete relationship. Please try again.");
+    } finally {
+      setIsDeletingRelationship(false);
+    }
     } catch (error) {
       console.error("Failed to delete relationship:", error);
       setRelationshipError("Failed to delete relationship");
@@ -852,9 +861,9 @@ export default function TreeDetailPage({
                         rel.Person2Id,
                         rel.RelationshipType
                       );
-                      setIsDeleteRelationshipModalOpen(false);
                     }}
-                    className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors"
+                    disabled={isDeletingRelationship}
+                    className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center justify-between">
                       <div>

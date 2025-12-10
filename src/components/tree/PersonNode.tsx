@@ -57,19 +57,19 @@ function PersonNode({ data, selected }: PersonNodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        id="top"
+        id="target-top"
         className="w-2 h-2"
       />
       <Handle
         type="target"
         position={Position.Left}
-        id="left"
+        id="target-left"
         className="w-2 h-2"
       />
       <Handle
         type="target"
         position={Position.Right}
-        id="right"
+        id="target-right"
         className="w-2 h-2"
       />
 
@@ -148,19 +148,19 @@ function PersonNode({ data, selected }: PersonNodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom"
+        id="source-bottom"
         className="w-2 h-2"
       />
       <Handle
         type="source"
         position={Position.Left}
-        id="left"
+        id="source-left"
         className="w-2 h-2"
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right"
+        id="source-right"
         className="w-2 h-2"
       />
     </div>

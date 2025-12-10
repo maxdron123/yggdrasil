@@ -143,7 +143,8 @@ function calculateTreeLayout(
 
   // Create edges from relationships
   relationships.forEach((rel) => {
-    const edgeId = `${rel.Person1Id}-${rel.Person2Id}`;
+    // Use RelationshipId as edge ID to allow multiple relationships between same people
+    const edgeId = rel.RelationshipId;
 
     // Base edge config
     const baseEdge: any = {
@@ -327,11 +328,9 @@ export default function TreeVisualization({
   const onEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => {
       if (isRemoving && onRelationshipDelete) {
-        // Extract relationship data from edge
+        // Find relationship by edge ID (which is the RelationshipId)
         const relationship = relationships.find(
-          (r) =>
-            (r.Person1Id === edge.source && r.Person2Id === edge.target) ||
-            (r.Person1Id === edge.target && r.Person2Id === edge.source)
+          (r) => r.RelationshipId === edge.id
         );
 
         if (relationship) {
@@ -528,6 +527,7 @@ export default function TreeVisualization({
 
       <div className="w-full h-full bg-gray-50 rounded-lg border border-gray-200">
         <ReactFlow
+          key={`tree-${relationships.length}`}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}

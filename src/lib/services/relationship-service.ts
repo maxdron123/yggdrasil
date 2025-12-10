@@ -58,15 +58,7 @@ export async function createRelationship(
     throw new Error("Cannot create relationship with self");
   }
 
-  // Check if a relationship already exists between these two people (in either direction)
-  const existingRelationships = await getPersonRelationships(person1Id);
-  const hasExistingRelationship = existingRelationships.some(
-    (rel) => rel.Person2Id === person2Id || rel.Person1Id === person2Id
-  );
-
-  if (hasExistingRelationship) {
-    throw new Error("A relationship already exists between these two people");
-  }
+  // Note: Multiple relationships between same people are now allowed (e.g., parent-child AND spouse)
 
   const relationshipId = `rel-${uuidv4()}`;
   const now = new Date().toISOString();
@@ -114,6 +106,8 @@ export async function createRelationship(
       TreeId: treeId,
       UserId: userId,
       CreatedAt: now,
+      ...(sourceHandle && { sourceHandle }),
+      ...(targetHandle && { targetHandle }),
     };
   } else if (relationshipType === "Spouse") {
     // Spouse relationships are symmetric
