@@ -192,11 +192,6 @@ export default function TreeDetailPage({
     } finally {
       setIsDeletingRelationship(false);
     }
-    } catch (error) {
-      console.error("Failed to delete relationship:", error);
-      setRelationshipError("Failed to delete relationship");
-      setTimeout(() => setRelationshipError(null), 5000);
-    }
   };
 
   const handleListRelationshipSelect = async (relationshipType: string) => {
