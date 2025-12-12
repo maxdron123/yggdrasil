@@ -2,12 +2,14 @@
  * Add Greek Gods Family Tree to Demo User
  *
  * Creates a second tree showing the Greek pantheon relationships
+ * Run with: npx tsx scripts/create-greek-gods-tree.ts
  */
 
 import { config } from "dotenv";
 import path from "path";
 
-config({ path: path.join(process.cwd(), ".env.local") });
+// Load production environment for AWS access
+config({ path: path.join(process.cwd(), ".env.production") });
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -17,17 +19,18 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 
 const DEMO_USER_ID = "user-demo-001";
-const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "Yggdrasil";
+const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || "Yggdrasil-Production";
 const TREE_ID = "tree-greek-gods";
 
-// Create DynamoDB client
+// Create DynamoDB client for AWS (not local)
 const dynamoDBClient = new DynamoDBClient({
-  endpoint: process.env.DYNAMODB_ENDPOINT,
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "local",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "local",
-  },
+  region: process.env.AWS_REGION || process.env.DYNAMODB_REGION || "us-east-1",
+  credentials: process.env.AWS_ACCESS_KEY_ID
+    ? {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      }
+    : undefined,
 });
 
 const docClient = DynamoDBDocumentClient.from(dynamoDBClient, {
@@ -58,7 +61,7 @@ async function createRelationshipDirect(
     PK: `PERSON#${person1Id}`,
     SK: `${
       relationshipType === "Parent" ? "PARENT" : relationshipType.toUpperCase()
-    }#${person2Id}`,
+    }#${person2Id}#${relationshipId}`,
     EntityType: "RELATIONSHIP",
     GSI2PK: `TREE#${treeId}`,
     GSI2SK: `REL#${relationshipId}`,
@@ -75,7 +78,7 @@ async function createRelationshipDirect(
   if (relationshipType === "Parent") {
     item2 = {
       PK: `PERSON#${person2Id}`,
-      SK: `CHILD#${person1Id}`,
+      SK: `CHILD#${person1Id}#${relationshipId}`,
       EntityType: "RELATIONSHIP",
       GSI2PK: `TREE#${treeId}`,
       GSI2SK: `REL#${relationshipId}`,
@@ -90,7 +93,7 @@ async function createRelationshipDirect(
   } else if (relationshipType === "Spouse" || relationshipType === "Sibling") {
     item2 = {
       PK: `PERSON#${person2Id}`,
-      SK: `${relationshipType.toUpperCase()}#${person1Id}`,
+      SK: `${relationshipType.toUpperCase()}#${person1Id}#${relationshipId}`,
       EntityType: "RELATIONSHIP",
       GSI2PK: `TREE#${treeId}`,
       GSI2SK: `REL#${relationshipId}`,
@@ -384,12 +387,12 @@ async function createGreekGodsTree() {
           EntityType: "Person",
           userId: DEMO_USER_ID,
           treeId: TREE_ID,
-          GSI1PK: `TREE#${TREE_ID}`,
-          GSI1SK: `PERSON#${god.personId}`,
-          GSI2PK: TREE_ID,
-          GSI2SK: now,
+          GSI1PK: `PERSON#${god.personId}`,
+          GSI1SK: "METADATA",
+          GSI2PK: `TREE#${TREE_ID}`,
+          GSI2SK: `PERSON#${god.personId}`,
           GSI3PK: DEMO_USER_ID,
-          GSI3SK: now,
+          GSI3SK: `PERSON#${now}`,
           createdAt: now,
           updatedAt: now,
           ...god,
@@ -403,12 +406,18 @@ async function createGreekGodsTree() {
   console.log("\n🔗 Creating divine relationships...");
 
   const relationships = [
+    // Chaos -> Gaia (primordial origin)
+    { p1: GODS.CHAOS, p2: GODS.GAIA, type: "Parent" as const },
+
     // Primordial -> Titans
     { p1: GODS.GAIA, p2: GODS.URANUS, type: "Spouse" as const },
     { p1: GODS.GAIA, p2: GODS.CRONUS, type: "Parent" as const },
     { p1: GODS.URANUS, p2: GODS.CRONUS, type: "Parent" as const },
     { p1: GODS.GAIA, p2: GODS.RHEA, type: "Parent" as const },
     { p1: GODS.URANUS, p2: GODS.RHEA, type: "Parent" as const },
+
+    // Titans siblings
+    { p1: GODS.CRONUS, p2: GODS.RHEA, type: "Sibling" as const },
 
     // Titans married
     { p1: GODS.CRONUS, p2: GODS.RHEA, type: "Spouse" as const },
@@ -427,7 +436,7 @@ async function createGreekGodsTree() {
     { p1: GODS.CRONUS, p2: GODS.HESTIA, type: "Parent" as const },
     { p1: GODS.RHEA, p2: GODS.HESTIA, type: "Parent" as const },
 
-    // Olympian siblings
+    // Olympian siblings (complete set)
     { p1: GODS.ZEUS, p2: GODS.HERA, type: "Sibling" as const },
     { p1: GODS.ZEUS, p2: GODS.POSEIDON, type: "Sibling" as const },
     { p1: GODS.ZEUS, p2: GODS.HADES, type: "Sibling" as const },
@@ -435,7 +444,14 @@ async function createGreekGodsTree() {
     { p1: GODS.ZEUS, p2: GODS.HESTIA, type: "Sibling" as const },
     { p1: GODS.HERA, p2: GODS.POSEIDON, type: "Sibling" as const },
     { p1: GODS.HERA, p2: GODS.HADES, type: "Sibling" as const },
+    { p1: GODS.HERA, p2: GODS.DEMETER, type: "Sibling" as const },
+    { p1: GODS.HERA, p2: GODS.HESTIA, type: "Sibling" as const },
     { p1: GODS.POSEIDON, p2: GODS.HADES, type: "Sibling" as const },
+    { p1: GODS.POSEIDON, p2: GODS.DEMETER, type: "Sibling" as const },
+    { p1: GODS.POSEIDON, p2: GODS.HESTIA, type: "Sibling" as const },
+    { p1: GODS.HADES, p2: GODS.DEMETER, type: "Sibling" as const },
+    { p1: GODS.HADES, p2: GODS.HESTIA, type: "Sibling" as const },
+    { p1: GODS.DEMETER, p2: GODS.HESTIA, type: "Sibling" as const },
 
     // Zeus married to Hera
     { p1: GODS.ZEUS, p2: GODS.HERA, type: "Spouse" as const },
@@ -448,13 +464,32 @@ async function createGreekGodsTree() {
     { p1: GODS.ZEUS, p2: GODS.HERMES, type: "Parent" as const },
     { p1: GODS.ZEUS, p2: GODS.DIONYSUS, type: "Parent" as const },
 
-    // Hera -> Her children
+    // Hera -> Her children (Ares and Hephaestus with Zeus)
     { p1: GODS.HERA, p2: GODS.ARES, type: "Parent" as const },
     { p1: GODS.HERA, p2: GODS.HEPHAESTUS, type: "Parent" as const },
 
-    // Siblings among Zeus's children
+    // Zeus's children - siblings (all children of Zeus are half-siblings)
+    { p1: GODS.ATHENA, p2: GODS.APOLLO, type: "Sibling" as const },
+    { p1: GODS.ATHENA, p2: GODS.ARTEMIS, type: "Sibling" as const },
+    { p1: GODS.ATHENA, p2: GODS.ARES, type: "Sibling" as const },
+    { p1: GODS.ATHENA, p2: GODS.HEPHAESTUS, type: "Sibling" as const },
+    { p1: GODS.ATHENA, p2: GODS.HERMES, type: "Sibling" as const },
+    { p1: GODS.ATHENA, p2: GODS.DIONYSUS, type: "Sibling" as const },
     { p1: GODS.APOLLO, p2: GODS.ARTEMIS, type: "Sibling" as const },
+    { p1: GODS.APOLLO, p2: GODS.ARES, type: "Sibling" as const },
+    { p1: GODS.APOLLO, p2: GODS.HEPHAESTUS, type: "Sibling" as const },
+    { p1: GODS.APOLLO, p2: GODS.HERMES, type: "Sibling" as const },
+    { p1: GODS.APOLLO, p2: GODS.DIONYSUS, type: "Sibling" as const },
+    { p1: GODS.ARTEMIS, p2: GODS.ARES, type: "Sibling" as const },
+    { p1: GODS.ARTEMIS, p2: GODS.HEPHAESTUS, type: "Sibling" as const },
+    { p1: GODS.ARTEMIS, p2: GODS.HERMES, type: "Sibling" as const },
+    { p1: GODS.ARTEMIS, p2: GODS.DIONYSUS, type: "Sibling" as const },
     { p1: GODS.ARES, p2: GODS.HEPHAESTUS, type: "Sibling" as const },
+    { p1: GODS.ARES, p2: GODS.HERMES, type: "Sibling" as const },
+    { p1: GODS.ARES, p2: GODS.DIONYSUS, type: "Sibling" as const },
+    { p1: GODS.HEPHAESTUS, p2: GODS.HERMES, type: "Sibling" as const },
+    { p1: GODS.HEPHAESTUS, p2: GODS.DIONYSUS, type: "Sibling" as const },
+    { p1: GODS.HERMES, p2: GODS.DIONYSUS, type: "Sibling" as const },
   ];
 
   let count = 0;

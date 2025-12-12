@@ -77,58 +77,88 @@ function calculateTreeLayout(
   // Find root persons (those without parents)
   const rootPersons = persons.filter((p) => !childParentMap.has(p.personId));
 
-  // If no roots found, use all persons at root level
-  const roots = rootPersons.length > 0 ? rootPersons : persons;
-
-  // Track visited persons to avoid cycles
+  // Track visited persons and their levels
   const visited = new Set<string>();
   const levels = new Map<string, number>(); // personId -> level
 
-  // BFS to assign levels
+  // BFS to assign levels starting from roots
   const queue: { personId: string; level: number }[] = [];
-  roots.forEach((person) => {
+
+  // Add all roots at level 0
+  rootPersons.forEach((person) => {
     queue.push({ personId: person.personId, level: 0 });
   });
+
+  // If no roots found, treat all persons as roots
+  if (rootPersons.length === 0) {
+    persons.forEach((person) => {
+      queue.push({ personId: person.personId, level: 0 });
+    });
+  }
 
   while (queue.length > 0) {
     const { personId, level } = queue.shift()!;
 
     if (visited.has(personId)) continue;
     visited.add(personId);
-    levels.set(personId, level);
 
-    // Add children to queue
+    // Set level (take the minimum if already assigned)
+    const currentLevel = levels.get(personId);
+    if (currentLevel === undefined || level < currentLevel) {
+      levels.set(personId, level);
+    }
+
+    // Add children to queue at next level
     const children = parentChildMap.get(personId) || [];
     children.forEach((childId) => {
-      if (!visited.has(childId)) {
-        queue.push({ personId: childId, level: level + 1 });
-      }
+      queue.push({ personId: childId, level: level + 1 });
     });
   }
 
-  // Group persons by level
-  const levelGroups = new Map<number, string[]>();
+  // Ensure all persons have a level (for disconnected nodes)
   persons.forEach((person) => {
-    const level = levels.get(person.personId) ?? 0;
+    if (!levels.has(person.personId)) {
+      levels.set(person.personId, 0);
+    }
+  });
+
+  // Group persons by level
+  const levelGroups = new Map<number, Person[]>();
+  persons.forEach((person) => {
+    const level = levels.get(person.personId)!;
     const group = levelGroups.get(level) || [];
-    group.push(person.personId);
+    group.push(person);
     levelGroups.set(level, group);
+  });
+
+  // Sort level groups by birth year for better arrangement
+  levelGroups.forEach((group) => {
+    group.sort((a, b) => {
+      // Try to sort by birth year if available
+      if (a.birthDate && b.birthDate) {
+        return a.birthDate.localeCompare(b.birthDate);
+      }
+      // Otherwise sort alphabetically
+      return a.firstName.localeCompare(b.firstName);
+    });
   });
 
   // Calculate node positions
   const nodeWidth = 220;
   const nodeHeight = 120;
-  const horizontalSpacing = 80;
-  const verticalSpacing = 150;
+  const horizontalSpacing = 50;
+  const verticalSpacing = 180;
 
   persons.forEach((person) => {
-    const level = levels.get(person.personId) ?? 0;
-    const groupMembers = levelGroups.get(level) || [];
-    const indexInGroup = groupMembers.indexOf(person.personId);
+    const level = levels.get(person.personId)!;
+    const groupMembers = levelGroups.get(level)!;
+    const indexInGroup = groupMembers.findIndex(
+      (p) => p.personId === person.personId
+    );
     const groupWidth = groupMembers.length * (nodeWidth + horizontalSpacing);
 
     const x =
-      indexInGroup * (nodeWidth + horizontalSpacing) - groupWidth / 2 + 400;
+      indexInGroup * (nodeWidth + horizontalSpacing) - groupWidth / 2 + 500;
     const y = level * (nodeHeight + verticalSpacing) + 50;
 
     nodes.push({
